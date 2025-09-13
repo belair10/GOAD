@@ -1,0 +1,26 @@
+- name: reboot-server
+  ansible.builtin.reboot:
+
+- name: Restart-Flask
+  ansible.builtin.systemd:
+    name: flask_app
+    state: restarted
+    enabled: yes
+
+- name: Restart Elasticsearch
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+    enabled: yes
+
+- name: Restart Kibana
+  ansible.builtin.systemd:
+    name: kibana
+    state: restarted
+    enabled: yes
+
+- name: Restart Logstash
+  ansible.builtin.systemd:
+    name: logstash
+    state: restarted
+    enabled: yes

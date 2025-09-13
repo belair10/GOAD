@@ -1,0 +1,31 @@
+- name: Enable enrollment
+  ansible.builtin.lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    line: "xpack.security.enrollment.enabled: true"
+    state: present
+  register: tmp
+
+- name: Restart Elasticsearch
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+  when: tmp.changed
+
+- name: Create enrollment token
+  ansible.builtin.shell: /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana
+  register: enrollment_token
+
+- name: Enroll kibana
+  ansible.builtin.shell: /usr/share/kibana/bin/kibana-setup --enrollment-token "{{ enrollment_token.stdout }}"
+
+- name: Restart Kibana
+  ansible.builtin.systemd:
+    name: kibana
+    state: restarted
+
+- name: Disable enrollment
+  ansible.builtin.lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    search_string: "xpack.security.enrollment.enabled: true"
+    state: absent
+  notify: Restart Elasticsearch

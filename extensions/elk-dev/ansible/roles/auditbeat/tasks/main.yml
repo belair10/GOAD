@@ -1,0 +1,57 @@
+
+---
+# tasks file for auditbeat
+
+# - name: Install using yum 
+#   include_tasks: yum-install.yml
+#   when: ansible_facts['os_family'] == "RedHat"
+
+# - name: Install using apt
+#   include_tasks: apt-install.yml
+#   when: ansible_facts['os_family'] != "RedHat"
+
+- name: Install Auditbeat
+  include_tasks: "{{ansible_facts['os_family']}}_install.yml"
+
+- name: Copy auditbeat config
+  ansible.builtin.template:
+    src: auditbeat.yml.j2
+    dest: /etc/auditbeat/auditbeat.yml
+
+- name: Add credentials to authenticate to Elasticsearch
+  ansible.builtin.blockinfile:
+    path: /etc/auditbeat/auditbeat.yml
+    insertafter: "output.elasticsearch:"
+    block: |
+      {% filter indent(width=2, first=true) %}
+      protocol: "https"
+      username: "{{beat_user}}"
+      password: "{{beat_password}}"
+      ssl.enabled: true
+      ssl.ca_trusted_fingerprint: "{{ es_cert_fingerprint }}"
+      {% endfilter %}
+  when: es_auth
+
+- name: Test Auditbeat output
+  ansible.builtin.command: 
+    cmd: /usr/share/auditbeat/bin/auditbeat test output
+    chdir: /etc/auditbeat
+  changed_when: false
+
+- name: Stop auditd
+  ansible.builtin.command: systemctl kill auditd
+  changed_when: false
+  ignore_errors: true
+    
+- name: Disable auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: stopped
+    enabled: false
+  ignore_errors: true
+
+- name: Enable and restart Auditbeat
+  ansible.builtin.systemd:
+    name: auditbeat
+    state: restarted
+    enabled: true

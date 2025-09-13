@@ -1,0 +1,13 @@
+- name: Add Elasticsearch GPG key
+  ansible.builtin.command:
+    cmd: rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+  changed_when: false
+
+- name: Copy Elastic repo file
+  ansible.builtin.copy:
+    src: elastic.repo
+    dest: /etc/yum.repos.d/elastic.repo
+
+- name: Install Auditbeat
+  ansible.builtin.yum:
+    name: auditbeat

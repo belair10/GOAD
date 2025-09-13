@@ -1,0 +1,20 @@
+# - name: Install MySQL repository (Oracle official)
+#   ansible.builtin.dnf:
+#     name: https://dev.mysql.com/get/mysql80-community-release-el7-3.noarch.rpm
+#     state: present
+
+# - name: Install MySQL server
+#   ansible.builtin.dnf:
+#     name: mysql-server
+#     state: present
+
+# - name: Start and enable MySQL service
+#   ansible.builtin.systemd:
+#     name: mysqld
+#     state: started
+#     enabled: true
+
+- name: Install dependencies
+  ansible.builtin.dnf:
+    name: mysql-python
+    state: present

@@ -1,0 +1,7 @@
+es_ca_cert_path: /etc/elasticsearch/certs/http_ca.crt
+es_su_user: mordin
+es_su_password: toortoor
+es_secure: false
+es_create_beat_writer: false
+es_beat_user: beat-writer
+es_beat_password: toortoor

@@ -1,0 +1,5 @@
+- name: Enable Unconstrained Delegation
+  ansible.windows.win_shell: |
+    Set-ADAccountControl -Identity "{{ item }}" -TrustedForDelegation $true -TrustedToAuthForDelegation $false
+#    Set-ADServiceAccount -Identity "{{ item }}" -Clear 'msDS-AllowedToDelegateTo'
+  loop: "{{ vulns_vars.usernames }}"

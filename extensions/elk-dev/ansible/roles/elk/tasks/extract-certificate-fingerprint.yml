@@ -1,0 +1,21 @@
+- name: Get Elasticsearch CA certificate pingerprint
+  ansible.builtin.command: 
+    argv:
+    - openssl
+    - x509
+    - -fingerprint
+    - -sha256
+    - -noout
+    - -in
+    - "{{es_ca_cert_path}}"
+  register: ca_fingerprint
+  changed_when: false
+
+- name: Extract SHA256 fingerprint
+  set_fact:
+    es_cert_fingerprint: "{{ ca_fingerprint.stdout.split('=')[1] | replace(':', '') }}"
+    cacheable: yes
+
+- name: Elasticsearch CA fingerprint
+  debug:
+    msg: "{{ es_cert_fingerprint }}" 

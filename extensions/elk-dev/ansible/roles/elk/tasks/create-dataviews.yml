@@ -1,0 +1,71 @@
+- name: Add Auditbeat Data view
+  ansible.builtin.command:  
+    argv: 
+    - curl
+    - --request
+    - POST 
+    - http://localhost:5601/api/data_views/data_view
+    - --header
+    - "Content-Type: application/json"
+    - --header
+    - "kbn-xsrf: string"
+    - --data
+    - '{"data_view":{"name":"Auditbeat","title":"auditbeat-*","timeFieldName":"@timestamp"}}'
+  when: not es_secure
+  register: res
+  changed_when: '"Duplicate data view:" not in res.stdout'
+
+- name: Add Auditbeat Data view (using auth token)
+  ansible.builtin.command:  
+    argv: 
+    - curl
+    - --request
+    - POST 
+    - http://localhost:5601/api/data_views/data_view
+    - --header
+    - "Content-Type: application/json"
+    - --header
+    - "Authorization: Basic {{ basic_auth_token }}"
+    - --header
+    - "kbn-xsrf: string"
+    - --data
+    - '{"data_view":{"name":"Auditbeat","title":"auditbeat-*","timeFieldName":"@timestamp"}}'
+  when: es_secure
+  register: res
+  changed_when: '"Duplicate data view:" not in res.stdout'
+
+- name: Add Filebeat Data view
+  ansible.builtin.command:    
+    argv:
+    - curl
+    - --request
+    - POST 
+    - http://localhost:5601/api/data_views/data_view
+    - --header
+    - "Content-Type: application/json"
+    - --header
+    - "kbn-xsrf: string"
+    - --data
+    - '{"data_view":{"name":"Filebeat","title":"filebeat-*","timeFieldName":"@timestamp"}}'
+  when: not es_secure
+  register: res
+  changed_when: '"Duplicate data view:" not in res.stdout'
+
+- name: Add Filebeat Data view (using auth token)
+  ansible.builtin.command:    
+    argv:
+    - curl
+    - --request
+    - POST 
+    - http://localhost:5601/api/data_views/data_view
+    - --header
+    - "Content-Type: application/json"
+    - --header
+    - "kbn-xsrf: string"
+    - --header
+    - "Authorization: Basic {{ basic_auth_token }}"
+    - --data
+    - '{"data_view":{"name":"Filebeat","title":"filebeat-*","timeFieldName":"@timestamp"}}'
+  when: es_secure
+  register: res
+  changed_when: '"Duplicate data view:" not in res.stdout'

@@ -1,0 +1,14 @@
+- include_tasks: "{{ansible_facts['os_family']}}_install.yml"
+
+- name: Copy docker compose files
+  ansible.builtin.copy:
+    src: "../ad/{{domain_name}}/files/docker/{{item}}/docker-compose.yml"
+    dest: "/opt/{{item}}/"
+  loop: "{{lab.hosts[dict_key].service_vars.docker_compose_files | default([])}}"
+
+- name: Run docker compose containers
+  ansible.builtin.shell:
+    cmd: docker compose up -d
+    chdir: "/opt/{{item}}/"
+  loop: "{{lab.hosts[dict_key].service_vars.docker_compose_files | default([])}}"
+  changed_when: false

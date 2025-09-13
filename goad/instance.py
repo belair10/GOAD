@@ -227,8 +227,17 @@ class LabInstance:
         windows_vm = lab_windows_template.render(
             ip_range=self.ip_range
         )
+        # windows_vm = ''
+
+        # if os.path.isfile(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name) + sep + 'windows.tf'):
+        #     lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
+        #     lab_windows_template = lab_environment.get_template("windows.tf")
+        #     linux_vm = lab_windows_template.render(
+        #         ip_range=self.ip_range
+        #     )
 
         linux_vm = ''
+
         if os.path.isfile(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name) + sep + 'linux.tf'):
             lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
             lab_windows_template = lab_environment.get_template("linux.tf")

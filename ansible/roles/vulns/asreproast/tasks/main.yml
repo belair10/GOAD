@@ -1,0 +1,4 @@
+---
+- name: Make users as-rep roastable
+  ansible.windows.win_shell: Set-ADAccountControl -Identity {{item}} -doesnotrequirepreauth $true
+  loop: "{{vulns_vars.usernames}}"

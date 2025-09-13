@@ -1,0 +1,56 @@
+- name: Ensure Python3 and pip are installed on RedHat
+  yum:
+    name:
+      - python3
+      - python3-pip
+    state: present
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Ensure Python3 and pip are installed on Debian
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-flask
+    state: present
+  when: ansible_facts['os_family'] != "RedHat"
+
+- name: Install Flask using pip
+  pip:
+    name: flask
+    executable: pip3
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Create application directory
+  file:
+    path: /opt/flask_app
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copy Flask application
+  copy:
+    src: app.py
+    dest: /opt/flask_app/app.py
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  notify: Restart-Flask
+
+- name: Create a systemd service file for Flask
+  copy:
+    dest: /etc/systemd/system/flask_app.service
+    content: |
+      [Unit]
+      Description=Flask Application
+      After=network.target
+      
+      [Service]
+      User={{ ansible_user }}
+      WorkingDirectory=/opt/flask_app
+      ExecStart=/usr/bin/python3 app.py
+      Restart=always
+      
+      [Install]
+      WantedBy=multi-user.target

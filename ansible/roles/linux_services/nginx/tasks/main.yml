@@ -1,0 +1,23 @@
+---
+# tasks file for nginx
+- include_tasks: "{{ansible_facts['os_family']}}_install.yml"
+
+- name: Add nginx default configuration
+  ansible.builtin.copy:
+    src: defaults/static-site-config
+    dest: /etc/nginx/sites-available/
+    # owner: "{{ user }}"
+    # group: root
+    # mode: '0644'
+
+- name: Enable website configuration
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/static-site-config
+    dest: /etc/nginx/sites-enabled/static-site-config
+    state: link
+
+- name: Ensure nginx is running
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: yes

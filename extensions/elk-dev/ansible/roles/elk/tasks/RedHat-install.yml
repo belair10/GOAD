@@ -1,0 +1,30 @@
+- name: Add Elasticsearch GPG key
+  ansible.builtin.command:
+    cmd: rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+- name: Copy Logstash repo file
+  ansible.builtin.copy:
+    src: logstash.repo
+    dest: /etc/yum.repos.d/logstash.repo
+  
+- name: Copy Elasticsearch repo file
+  ansible.builtin.copy:
+    src: elasticsearch.repo
+    dest: /etc/yum.repos.d/elasticsearch.repo
+
+- name: Copy Kibana repo file
+  ansible.builtin.copy:
+    src: kibana.repo
+    dest: /etc/yum.repos.d/kibana.repo
+
+- name: Install Elasticsearch
+  ansible.builtin.command:
+    cmd: yum install elasticsearch -y
+
+- name: Install Logstash
+  ansible.builtin.command:
+    cmd: yum install logstash -y
+
+- name: Install Kibana
+  ansible.builtin.command:
+    cmd: yum install kibana -y

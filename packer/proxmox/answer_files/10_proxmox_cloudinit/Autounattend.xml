@@ -82,10 +82,13 @@
                     <WillShowUI>OnError</WillShowUI>
                 </DiskConfiguration>
                 <UserData>
+                    <ProductKey>
+                        <Key>2B87N-8KFHP-DKV6R-Y2C8J-PKCKT</Key>
+                        <WillShowUI>Never</WillShowUI>
+				    </ProductKey>
                     <AcceptEula>true</AcceptEula>
                     <FullName>Vagrant</FullName>
                     <Organization>Vagrant</Organization>
-
                     <!--
                         NOTF: If you are re-configuring this for use of a retail key
                         and using a retail ISO, you need to adjust the <ProductKey> block
@@ -98,11 +101,7 @@
 
                         Notice the addition of the `<Key>` element.
                     -->
-
                     <!-- Product Key from https://www.microsoft.com/en-us/evalcenter/evaluate-windows-10-enterprise -->
-                    <ProductKey>
-                        <WillShowUI>Never</WillShowUI>
-                    </ProductKey>
                 </UserData>
                 <ImageInstall>
                     <OSImage>

@@ -8,6 +8,7 @@ collections:
   - name: community.windows
     version: 2.3.0
   - name: chocolatey.chocolatey
+  - name: community.mysql
 # - name: goad.windows
 #   type: dir
 #   source: ./collections/goad/windows

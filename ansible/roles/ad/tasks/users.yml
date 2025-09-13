@@ -3,17 +3,18 @@
     src: C:\windows\temp
     dest: C:\windows\temp
 
-- name: "Create users"
-  win_domain_user:
-    name: "{{ item.key }}"
+- name: "Create Users 2"
+  microsoft.ad.user:
+    identity: "{{ item.key }}"
     firstname: "{{item.value.firstname}}"
     surname: "{{ item.value.surname | default(item.value.firstname) }}"
     password: "{{ item.value.password }}"
-    password_never_expires: yes
+    password_never_expires: true
     state: present
     path: "{{item.value.path}}"
     description: "{{item.value.description | default('-')}}"
-    groups: "{{ item.value.groups}}"
+    groups: 
+      add: "{{ item.value.groups}}"
     city: "{{item.value.city | default('-')}}"
     domain_username: "{{domain_username}}"
     domain_password: "{{domain_password}}"
@@ -22,6 +23,28 @@
   until: "usercreate is not failed"
   retries: 3
   delay: 30
+
+
+
+# - name: "Create users"
+#   win_domain_user:
+#     name: "{{ item.key }}"
+#     firstname: "{{item.value.firstname}}"
+#     surname: "{{ item.value.surname | default(item.value.firstname) }}"
+#     password: "{{ item.value.password }}"
+#     password_never_expires: yes
+#     state: present
+#     path: "{{item.value.path}}"
+#     description: "{{item.value.description | default('-')}}"
+#     groups: "{{ item.value.groups}}"
+#     city: "{{item.value.city | default('-')}}"
+#     domain_username: "{{domain_username}}"
+#     domain_password: "{{domain_password}}"
+#   with_dict: "{{ ad_users }}"
+#   register: usercreate
+#   until: "usercreate is not failed"
+#   retries: 3
+#   delay: 30
 
 - name: "Set users SPN lists"
   win_domain_user:

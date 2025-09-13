@@ -1,0 +1,94 @@
+---
+# tasks file for elk
+
+- name: Check if ELK is installed
+  ansible.builtin.stat:
+    path: "/usr/share/{{item}}"
+  loop:
+  - elasticsearch
+  - logstash
+  - kibana
+  register: installed
+  # changed_when: not item.stat['exists'] # Not happy with stdout output since it always shows as OK even if directory not present.
+
+- name: Set fact if any ELK component is missing
+  set_fact:
+    elk_needs_install: "{{ installed.results | selectattr('stat.exists', 'equalto', false) | list | length > 0 }}"
+
+- name: Install ELK
+  include_tasks: "{{ansible_facts['os_family']}}-install.yml"
+  when: elk_needs_install
+
+- name: Copy Secure Elasticsearch config file
+  ansible.builtin.copy:
+    src: elasticsearch-secure.yml
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: "root"
+    group: "elasticsearch"
+    mode: 0660
+  when: es_secure
+  notify: Restart Elasticsearch
+
+- name: Copy Insecure Elasticsearch config file
+  ansible.builtin.copy:
+    src: elasticsearch-insecure.yml
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: "root"
+    group: "elasticsearch"
+    mode: 0660
+  when: not es_secure
+  notify: Restart Elasticsearch
+
+- name: Copy Kibana config file
+  ansible.builtin.copy:
+    src: kibana.yml
+    dest: /etc/kibana/kibana.yml
+    owner: "root"
+    group: "kibana"
+    mode: 0660
+  notify: Restart Kibana
+
+- name: Start services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+  - elasticsearch
+  # - logstash
+  - kibana
+
+- name: Wait for Kibana to become available
+  ansible.builtin.wait_for:
+    host: localhost
+    port: 5601
+    timeout: 30
+    
+  
+- name: Check if kibana is enrolled
+  ansible.builtin.uri:
+    url: http://localhost:5601/api/status
+    method: GET
+    return_content: yes
+    headers:
+      kbn-xsrf: "true"
+    status_code: [200, 503]
+  register: kibana_status
+  when: es_secure
+  failed_when: kibana_status.status not in [200, 503]
+  ignore_errors: true
+
+- name: Enroll kibana
+  ansible.builtin.include_tasks: enroll-kibana.yml
+  when: es_secure and kibana_status.status not in [200]
+
+- name: Get Elasticsearch CA fingerprint
+  ansible.builtin.include_tasks: extract-certificate-fingerprint.yml
+  when: es_secure
+
+- name: Create users and roles
+  include_tasks: roles-and-users.yml
+  when: es_secure
+
+- include_tasks: export-app.yml
+- include_tasks: create-dataviews.yml

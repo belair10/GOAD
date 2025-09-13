@@ -1,0 +1,50 @@
+- name: Create "{{ es_su_user }}" superuser
+  ansible.builtin.command: /usr/share/elasticsearch/bin/elasticsearch-users useradd "{{ es_su_user }}" -r superuser -p "{{ es_su_password }}"
+  register: res
+  failed_when: "res.rc != 0 and 'already exists' not in res.stderr"
+  changed_when: false
+
+- name: Set Basic Auth token
+  set_fact:
+    basic_auth_token: "{{ (es_su_user ~ ':' ~ es_su_password) | b64encode }}"
+
+- name: Check {{ es_beat_user }} role presence
+  ansible.builtin.command:
+    argv:
+    - curl
+    - --request
+    - GET 
+    - -k
+    - "https://localhost:9200/_security/role/{{ es_beat_user }}"
+    - --header
+    - "Authorization: Basic {{ basic_auth_token }}"
+  register: beat_role
+  changed_when: false
+
+- name: Add {{ es_beat_user }} role
+  ansible.builtin.command:
+    argv:
+    - curl
+    - --request
+    - PUT 
+    - -k
+    - "https://localhost:9200/_security/role/{{ es_beat_user }}"
+    - --header
+    - "Authorization: Basic {{ basic_auth_token }}"
+    - --header
+    - "Content-Type: application/json"
+    - --data
+    - '{"description": "Grants sufficient privileges to create/write to the *beat-* index.", "cluster": ["all"], "indices": [{"names": ["*beat-*"], "privileges": ["create_index", "write", "manage"] } ] }'
+  register: res
+  failed_when: '"{\"role\":{\"created\":false}}" in res.stdout'
+  ignore_errors: true
+  changed_when: false
+  when: beat_role.stdout == "{}"
+
+- name: Create "{{ es_beat_user }}" user
+  ansible.builtin.command: /usr/share/elasticsearch/bin/elasticsearch-users useradd "{{ es_beat_user }}" -r {{ es_beat_user }} -p "{{ es_beat_password }}"
+  register: res
+  failed_when: 
+  - "'already exists' not in res.stderr"
+  - "'The following roles [{{ es_beat_user }}] are not in the [/etc/elasticsearch/roles.yml] file.' not in res.stderr" 
+  changed_when: false

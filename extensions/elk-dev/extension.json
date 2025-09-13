@@ -1,0 +1,11 @@
+{
+    "name": "elk-dev",
+    "description": "Add an ELK to the current lab",
+    "machines": [
+        "elk"
+    ],
+    "compatibility": [
+        "*"
+    ],
+    "impact": "Add a linux machine and add winlogbeat and sysmon on all windows machines"
+}

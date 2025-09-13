@@ -8,6 +8,8 @@ variable "vm_config" {
     dns                = string
     ip                 = string
     gateway            = string
+    network_bridge     = string
+    vlan_id            = number
   }))
 
   default = {
@@ -15,7 +17,7 @@ variable "vm_config" {
   }
 }
 
-resource "proxmox_virtual_environment_vm" "bgp" {
+resource "proxmox_virtual_environment_vm" "windows" {
   for_each = var.vm_config
 
     name = each.value.name
@@ -48,9 +50,10 @@ resource "proxmox_virtual_environment_vm" "bgp" {
     }
 
     network_device {
-      bridge  = var.network_bridge
+      # bridge  = var.network_bridge
+      bridge = each.value.network_bridge
       model   = var.network_model
-      vlan_id = var.network_vlan
+      vlan_id = each.value.vlan_id
     }
 
     lifecycle {

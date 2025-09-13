@@ -56,6 +56,39 @@ GOAD-Mini:
   - security.yml
   - vulnerabilities.yml
 
+Humble-Beginnings:
+  - build.yml
+  - ad-servers.yml
+  - ad-parent_domain.yml
+  - ad-members.yml
+  - ad-data.yml
+  - ad-relations.yml
+  - security.yml
+  - vulnerabilities.yml
+
+Linux:
+  - build.yml
+  - ad-servers.yml
+  - ad-parent_domain.yml
+  - ad-members.yml
+  - ad-data.yml
+  - ad-relations.yml
+  - security.yml
+  - vulnerabilities.yml
+  - linux_services.yml
+
+Naboo:
+  - build.yml
+  - ad-servers.yml
+  - ad-parent_domain.yml
+  - ad-members.yml
+  - ad-data.yml
+  - ad-relations.yml
+  - servers.yml
+  - security.yml
+  - vulnerabilities.yml
+  - linux_services.yml
+
 default:
   - build.yml
   - ad-servers.yml

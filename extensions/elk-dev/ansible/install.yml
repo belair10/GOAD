@@ -1,0 +1,23 @@
+# LOGS and Monitoring ==========================================================================================
+- name: Install ELK server
+  hosts: elk_server
+  become: yes
+  roles:
+    - { role: 'elk', tags: 'elk', es_secure: false }
+
+- name: Install log agent on Windows VMs
+  hosts: elk_log
+  roles:
+    - { role: 'winlogbeat', tags: 'agent' }
+
+- name: Install Auditbeat on Linux VMs
+  hosts: auditbeat
+  roles:
+    - { role: 'auditbeat', tags: 'agent' ,es_auth: false }
+
+- name: Install Filebeat on Linux VMs
+  hosts: filebeat
+  roles:
+    - { role: 'filebeat', tags: 'agent', es_auth: false }
+
+  

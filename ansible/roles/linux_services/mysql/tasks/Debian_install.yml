@@ -1,0 +1,12 @@
+---
+- name: Install MySQL
+  ansible.builtin.apt:
+    name: 
+    # - mysql-server
+    - pip
+    - python3-pymysql
+
+# - name: Install Dependencies
+#   ansible.builtin.pip:
+#     name: mypysql
+#     break_system_packages: true

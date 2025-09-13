@@ -1,0 +1,13 @@
+- name: Install Linux services
+  hosts: linux
+  vars_files:
+    - "../ad/{{domain_name}}/data/config.json"
+    # - "../ad/{{domain_name}}/files/docker/mysql/docker-compose.yml"
+  tasks:
+  - name: Install serrvices
+    ansible.builtin.include_role:
+      name: "linux_services/{{ service }}"
+    loop: "{{lab.hosts[dict_key].services | default([])}}"
+    loop_control:
+      loop_var: service
+    

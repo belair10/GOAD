@@ -1,0 +1,37 @@
+---
+# tasks file for mysql
+- ansible.builtin.set_fact: 
+    mysql_root_password: "{{lab.hosts[dict_key].service_vars.mysql.mysql_root_password}}"
+    dbs: "{{lab.hosts[dict_key].service_vars.mysql.dbs}}"
+    users: "{{lab.hosts[dict_key].service_vars.mysql.users}}"
+
+- include_tasks: "{{ansible_facts['os_family']}}_install.yml"
+
+- name: "Create databases"
+  community.mysql.mysql_db:
+    name: "{{ item.key }}"
+    state: present
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+  with_dict: "{{dbs}}"
+  # delegate_to: localhost
+
+- name: Run database queries
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    login_db: "{{item.key}}"
+    query: "{{item.value.queries}}"
+  with_dict: "{{dbs}}"
+  changed_when: false
+
+- name: "Create MySQL users"
+  community.mysql.mysql_user:
+    name: "{{item.username}}"
+    priv: "{{item.privs}}"
+    password: "{{item.password}}"
+    host: '%'
+    state: present
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+  loop: "{{ users }}"

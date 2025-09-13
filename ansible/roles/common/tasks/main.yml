@@ -26,6 +26,8 @@
     Install-PackageProvider -Name NuGet -Force
     Install-Module PowerShellGet -Force
 
+# Install-PackageProvider -Name NuGet -Force // This broke build.yml
+
 - name: Windows | Check for ComputerManagementDsc Powershell module
   win_psmodule:
     name: ComputerManagementDsc

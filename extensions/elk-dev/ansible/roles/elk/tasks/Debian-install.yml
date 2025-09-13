@@ -1,0 +1,24 @@
+- name: Import the Elasticsearch PGP key
+  ansible.builtin.shell: 
+    cmd: wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
+    creates: /usr/share/keyrings/elasticsearch-keyring.gpg
+
+- name: Install dependencies
+  ansible.builtin.apt:
+    name: apt-transport-https
+
+- name: Save repo definition
+  ansible.builtin.shell: echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list
+
+- name: Install Elasticsearch
+  ansible.builtin.apt:
+    name: elasticsearch
+    update_cache: true
+
+- name: Install Kibana
+  ansible.builtin.apt:
+    name: kibana
+
+- name: Install Logstash
+  ansible.builtin.apt:
+    name: logstash

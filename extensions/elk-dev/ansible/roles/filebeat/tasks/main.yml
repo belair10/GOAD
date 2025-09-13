@@ -1,0 +1,35 @@
+
+---
+# tasks file for filebeat
+- include_tasks: "{{ansible_facts['os_family']}}_install.yml"
+
+- name: Copy Filebeat.yml
+  ansible.builtin.template:
+    src: filebeat.yml.j2
+    dest: /etc/filebeat/filebeat.yml
+
+- name: Add credentials to authenticate to Elasticsearch
+  ansible.builtin.blockinfile:
+    path: /etc/filebeat/filebeat.yml
+    insertafter: "output.elasticsearch:"
+    block: |
+      {% filter indent(width=2, first=true) %}
+      protocol: "https"
+      username: "{{beat_user}}"
+      password: "{{beat_password}}"
+      ssl.enabled: true
+      ssl.ca_trusted_fingerprint: "{{ es_cert_fingerprint }}"
+      {% endfilter %}
+  when: es_auth
+
+- name: Test Filebeat output
+  ansible.builtin.command: 
+    cmd: /usr/share/filebeat/bin/filebeat test output
+    chdir: /etc/filebeat
+  changed_when: false
+
+- name: Enable and restart Filebeat
+  ansible.builtin.systemd:
+    name: filebeat
+    state: restarted
+    enabled: true
