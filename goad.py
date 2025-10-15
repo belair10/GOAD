@@ -7,6 +7,7 @@ from goad.log import Log
 from goad.exceptions import JumpBoxInitFailed
 from goad.menu import print_menu, print_logo
 from goad.infos import *
+from goad.utils import PROXMOX, PROVIDER
 
 
 class Goad(cmd.Cmd):
@@ -17,7 +18,14 @@ class Goad(cmd.Cmd):
         self.args = args
         # prepare config, read configuration file and merge with args
         config = Config()
-        config.merge_config(args)
+        # Enforce Proxmox-only provider: ensure args has provider set to proxmox
+        try:
+            setattr(self.args, 'provider', PROXMOX)
+        except Exception:
+            pass
+        config.merge_config(self.args)
+        # Also force the provider in the merged configuration
+        config.set_value('default', PROVIDER, PROXMOX)
         # prepare lab controller to manage labs
         # import lab manager after the loading of the dependencies to allow disabling some provider and provisioning method
         from goad.lab_manager import LabManager
@@ -224,22 +232,17 @@ class Goad(cmd.Cmd):
 
     def do_set_provider(self, arg):
         """
-        Change/Set the provider to use
-        :param arg: provider name
-        :return: void
+        Provider is fixed to proxmox. This command enforces proxmox.
         """
-        if arg == '':
-            Log.error('missing provider argument')
-            Log.info(f'set_provider <provider> (allowed values : {",".join(ALLOWED_PROVIDERS)})')
-        else:
-            try:
-                self.lab_manager.set_provider(arg)
-                self.refresh_prompt()
-            except ValueError as err:
-                Log.error(err.args[0])
+        try:
+            Log.info("Provider is fixed to 'proxmox'.")
+            self.lab_manager.set_provider(PROXMOX)
+            self.refresh_prompt()
+        except ValueError as err:
+            Log.error(err.args[0])
 
     def complete_set_provider(self, text, line, begidx, endidx):
-        options = self.lab_manager.get_provider_options()
+        options = ['proxmox']
         if not text:
             completions = options
         else:
@@ -460,7 +463,6 @@ def parse_args():
                                      epilog=show_help(), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-t", "--task", help=f"{task_help}", required=False)
     parser.add_argument("-l", "--lab", help="lab to use (default: GOAD)", default='GOAD', required=False)
-    parser.add_argument("-p", "--provider", help="provider to use (default: vmware)", default='vmware', required=False)
     parser.add_argument("-ip", "--ip_range", help="ip range to use (default: 192.168.56)", default='', required=False)
     parser.add_argument("-m", "--method", help="deploy method to use (default: local)", default='local', required=False)
     parser.add_argument("-i", "--instance", help="use a specific instance (use default if not selected)", required=False)
@@ -475,7 +477,7 @@ def parse_args():
 def show_help():
     return '''
 Example :
- - Install GOAD on virtualbox : python3 goad.py -t install -l GOAD -p virtualbox
+ - Install GOAD on Proxmox : python3 goad.py -t install -l GOAD
  - Launch GOAD interactive console : python3 goad.py
 '''
 
