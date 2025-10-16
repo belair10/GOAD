@@ -507,46 +507,49 @@ if __name__ == '__main__':
     print_logo()
     args = parse_args()
     goad = Goad(args)
+    try:
+        if args is None or args.task is None:
+            goad.cmdloop()
+        else:
+            if args.instance is not None:
+                goad.do_load(args.instance)
 
-    if args is None or args.task is None:
-        goad.cmdloop()
-    else:
-        if args.instance is not None:
-            goad.do_load(args.instance)
+            if args.run_playbook is not None or args.ansible_only is not None:
+                if args.instance is None:
+                    Log.error('Instance must be selected (-i) to use --run_playbook (-r) or --ansible_only (-a)')
+                    sys.exit(1)
 
-        if args.run_playbook is not None or args.ansible_only is not None:
-            if args.instance is None:
-                Log.error('Instance must be selected (-i) to use --run_playbook (-r) or --ansible_only (-a)')
-                sys.exit(1)
-
-        # Command line args like the old goad.sh commands
-        if args.task is not None:
-            if args.task == 'install':
-                if args.instance is not None:
-                    if args.run_playbook is not None:
-                        goad.do_provision(args.run_playbook)
-                    elif args.ansible_only:
-                        goad.do_provision_lab()
+            # Command line args like the old goad.sh commands
+            if args.task is not None:
+                if args.task == 'install':
+                    if args.instance is not None:
+                        if args.run_playbook is not None:
+                            goad.do_provision(args.run_playbook)
+                        elif args.ansible_only:
+                            goad.do_provision_lab()
+                        else:
+                            goad.do_install_instance()
                     else:
-                        goad.do_install_instance()
-                else:
-                    goad.do_install()
-            elif args.task == 'check':
-                goad.do_check()
-            elif args.task == 'start':
-                goad.do_start()
-            elif args.task == 'stop':
-                goad.do_stop()
-            elif args.task == 'restart':
-                goad.do_stop()
-                goad.do_start()
-            elif args.task == 'destroy':
-                goad.do_destroy()
-            elif args.task == 'status':
-                goad.do_status()
-            elif args.task == 'snapshot':
-                goad.do_snapshot()
-            elif args.task == 'reset':
-                goad.do_reset()
-            elif args.task == 'show':
-                pass
+                        goad.do_install()
+                elif args.task == 'check':
+                    goad.do_check()
+                elif args.task == 'start':
+                    goad.do_start()
+                elif args.task == 'stop':
+                    goad.do_stop()
+                elif args.task == 'restart':
+                    goad.do_stop()
+                    goad.do_start()
+                elif args.task == 'destroy':
+                    goad.do_destroy()
+                elif args.task == 'status':
+                    goad.do_status()
+                elif args.task == 'snapshot':
+                    goad.do_snapshot()
+                elif args.task == 'reset':
+                    goad.do_reset()
+                elif args.task == 'show':
+                    pass
+    except KeyboardInterrupt:
+        print()
+        Log.info('Ctrl-C recieved, exiting')
