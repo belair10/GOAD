@@ -37,7 +37,7 @@ variable "vm_template_id" {
 
 variable "storage" {
   # change this with the name of the storage you use
-  default = "{{config.get_value('proxmox', 'pm_storage', 'local')}}"
+  default = "{{storage}}"
 }
 
 variable "network_bridge" {
