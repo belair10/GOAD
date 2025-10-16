@@ -280,6 +280,12 @@ class Goad(cmd.Cmd):
         else:
             self.lab_manager.set_network_bridge(arg)
 
+    def do_set_storage(self, arg):
+        if arg == '':
+            Log.error('missing storage argument')
+        else:
+            self.lab_manager.set_storage(arg)
+
     def do_set_extensions(self, arg):
         if arg == '':
             Log.error('missing extensions arguments')

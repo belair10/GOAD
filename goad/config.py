@@ -33,8 +33,8 @@ class Config:
         config.set('default', "; provisioner method : local / remote")
         config.set('default', 'provisioner', 'local')
 
-        config.set('default', '; ip_range (3 first ip digits)')
-        config.set('default', 'ip_range', '192.168.56')
+        config.set('default', '; ip_range (2 first ip digits)')
+        config.set('default', 'ip_range', '192.168')
 
         config.add_section('aws')
         config.set('aws', 'aws_region', 'eu-west-3')

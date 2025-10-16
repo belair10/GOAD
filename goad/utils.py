@@ -10,7 +10,8 @@ LAB = 'lab'
 PROVIDER = 'provider'
 PROVISIONER = 'provisioner'
 IP_RANGE = 'ip_range'
-NETWORK_BRIDGE = 'network_bridge'
+NETWORK_BRIDGE = 'pm_network_bridge'
+STORAGE = 'pm_storage'
 
 # log level
 INFO = 5

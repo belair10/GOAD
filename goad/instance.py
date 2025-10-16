@@ -11,7 +11,7 @@ from goad.utils import *
 
 class LabInstance:
 
-    def __init__(self, instance_id, lab_name, config, provider_name, provisioner_name, ip_range, network_bridge, extensions=None, status='', default=False):
+    def __init__(self, instance_id, lab_name, config, provider_name, provisioner_name, ip_range, network_bridge, storage, extensions=None, status='', default=False):
         if instance_id is None:
             random_id = ''.join(random.choices(string.hexdigits, k=6))
             self.instance_id = f'{random_id}-{lab_name}-{provider_name}'.lower()
@@ -23,6 +23,7 @@ class LabInstance:
         self.provisioner_name = provisioner_name
         self.ip_range = ip_range
         self.network_bridge = network_bridge
+        self.storage = storage
         self.status = status
         if extensions is None:
             extensions = []
@@ -311,6 +312,7 @@ class LabInstance:
                 lab_name=self.lab_name,
                 ip_range=self.ip_range,
                 provider_name=self.provider_name,
+                storage=self.storage,
                 config=self.config
             )
             # create terraform files

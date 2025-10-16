@@ -33,7 +33,8 @@ class LabManager(metaclass=SingletonMeta):
         self.current_settings.set_provider_name(self.config.get_value('default', PROVIDER), False)
         self.current_settings.set_provisioner_name(self.config.get_value('default', PROVISIONER))
         self.current_settings.set_ip_range(self.config.get_value('default', IP_RANGE))
-        self.current_settings.set_network_bridge(self.config.get_value('default', NETWORK_BRIDGE))
+        self.current_settings.set_network_bridge(self.config.get_value('proxmox', NETWORK_BRIDGE))
+        self.current_settings.set_storage(self.config.get_value('proxmox', STORAGE))
         if args.extensions:
             self.current_settings.set_extensions(args.extensions)
         return self
@@ -61,7 +62,7 @@ class LabManager(metaclass=SingletonMeta):
 
     def create_instance(self):
         instance = LabInstance(None, self.current_settings.lab_name, self.config, self.current_settings.provider_name, self.current_settings.provisioner_name,
-                               self.current_settings.ip_range, self.current_settings.network_bridge, extensions=self.current_settings.extensions_name)
+                               self.current_settings.ip_range, self.current_settings.network_bridge, self.current_settings.storage, extensions=self.current_settings.extensions_name)
         result = instance.create_instance_folder()
         if result:
             self.lab_instances.add_instance(instance)
@@ -137,6 +138,9 @@ class LabManager(metaclass=SingletonMeta):
 
     def set_network_bridge(self, network_bridge):
         self.current_settings.set_network_bridge(network_bridge)
+
+    def set_storage(self, storage):
+        self.current_settings.set_storage(storage)
 
     def get_ip_range(self):
         return self.current_settings.ip_range

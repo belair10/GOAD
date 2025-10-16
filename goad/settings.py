@@ -27,6 +27,7 @@ class Settings:
         self.provisioner_name = instance.provisioner_name
         self.ip_range = instance.ip_range
         self.network_bridge = instance.network_bridge
+        self.storage = instance.storage
         self.extensions_name = instance.extensions
 
     def show(self):
@@ -36,6 +37,7 @@ class Settings:
         if self.provider_name != LUDUS:
             Log.info(f'Current IP range         : {self.ip_range}.X.X')
         Log.info(f'Current network bridge   : {self.network_bridge}')
+        Log.info(f'Current storage          : {self.storage}')
         Log.info(f'Extension(s)             :')
         for extension in self.extensions_name:
             Log.info(f' - {extension}')
@@ -137,6 +139,10 @@ class Settings:
         self.network_bridge = network_bridge
         Log.info(f'Using {network_bridge}')
         return self.network_bridge
+    
+    def set_storage(self, storage):
+        self.storage = storage
+        return self.storage
 
     def set_ip_range(self, ip_range):
         error = False
