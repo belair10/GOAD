@@ -11,7 +11,7 @@ from goad.utils import *
 
 class LabInstance:
 
-    def __init__(self, instance_id, lab_name, config, provider_name, provisioner_name, ip_range, extensions=None, status='', default=False):
+    def __init__(self, instance_id, lab_name, config, provider_name, provisioner_name, ip_range, network_bridge, extensions=None, status='', default=False):
         if instance_id is None:
             random_id = ''.join(random.choices(string.hexdigits, k=6))
             self.instance_id = f'{random_id}-{lab_name}-{provider_name}'.lower()
@@ -22,6 +22,7 @@ class LabInstance:
         self.provider_name = provider_name
         self.provisioner_name = provisioner_name
         self.ip_range = ip_range
+        self.network_bridge = network_bridge
         self.status = status
         if extensions is None:
             extensions = []
@@ -106,6 +107,7 @@ class LabInstance:
             "provider": self.provider_name,
             "provisioner": self.provisioner_name,
             "ip_range": self.ip_range,
+            "network_bridge": self.network_bridge,
             "extensions": self.extensions,
             "status": self.status,
             "is_default": self.is_default
@@ -225,7 +227,8 @@ class LabInstance:
         lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
         lab_windows_template = lab_environment.get_template("windows.tf")
         windows_vm = lab_windows_template.render(
-            ip_range=self.ip_range
+            ip_range=self.ip_range,
+            network_bridge=self.network_bridge
         )
         # windows_vm = ''
 
@@ -242,7 +245,8 @@ class LabInstance:
             lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
             lab_windows_template = lab_environment.get_template("linux.tf")
             linux_vm = lab_windows_template.render(
-                ip_range=self.ip_range
+                ip_range=self.ip_range,
+                network_bridge=self.network_bridge
             )
 
         # load lab extensions content
@@ -273,6 +277,7 @@ class LabInstance:
                 lab_identifier=self.lab_name + '-' + self.instance_id,
                 lab_name=self.lab_name,
                 ip_range=self.ip_range,
+                # network_bridge=self.ne
                 provider_name=self.provider_name,
                 config=self.config
             )

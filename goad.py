@@ -273,6 +273,13 @@ class Goad(cmd.Cmd):
             self.lab_manager.set_ip_range(arg)
             self.refresh_prompt()
 
+    def do_set_network_bridge(self, arg):
+        if arg == '':
+            Log.error('missing network bridge to use')
+            Log.info('set_network_bridge <vmbrX>')
+        else:
+            self.lab_manager.set_network_bridge(arg)
+
     def do_set_extensions(self, arg):
         if arg == '':
             Log.error('missing extensions arguments')
@@ -308,6 +315,16 @@ class Goad(cmd.Cmd):
                     Log.error(f'extension {extension_name} not found abort')
             else:
                 Log.error('Install extension can only be run from an instance')
+
+    def do_add_clients(self, arg=''):
+        if arg == '':
+            Log.error('Usage: add_clients windows|linux number subnet')
+        arg = arg.split(' ')
+        client_type = arg[0]
+        client_number = arg[1]
+        client_subnet = arg[2]
+
+        self.lab_manager
 
     def do_provision_extension(self, arg):
         if arg == '':

@@ -25,10 +25,11 @@ class LabInstances:
                     provider_name = instance_info['provider']
                     provisioning_method = instance_info['provisioner']
                     ip_range = instance_info['ip_range']
+                    network_bridge = instance_info['network_bridge']
                     extensions = instance_info['extensions']
                     status = instance_info['status']
                     is_default = instance_info['is_default']
-                    self.instances[instance] = LabInstance(instance, lab_name, config, provider_name, provisioning_method, ip_range, extensions, status, is_default)
+                    self.instances[instance] = LabInstance(instance, lab_name, config, provider_name, provisioning_method, ip_range, network_bridge, extensions, status, is_default)
 
     def nb_instances(self):
         return len(self.instances)

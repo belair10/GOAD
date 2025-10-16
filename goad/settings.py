@@ -15,6 +15,8 @@ class Settings:
         self.provisioner_name = None
         self.extensions_name = []
         self.ip_range = None
+        self.network_bridge = None
+        # self.vlan = None
 
     def update(self, instance):
         """
@@ -25,15 +27,17 @@ class Settings:
         self.provider_name = instance.provider_name
         self.provisioner_name = instance.provisioner_name
         self.ip_range = instance.ip_range
+        self.network_bridge = instance.network_bridge
         self.extensions_name = instance.extensions
 
     def show(self):
-        Log.info(f'Current Lab         : {self.lab_name}')
-        Log.info(f'Current Provider    : {self.provider_name}')
-        Log.info(f'Current Provisioner : {self.provisioner_name}')
+        Log.info(f'Current Lab              : {self.lab_name}')
+        Log.info(f'Current Provider         : {self.provider_name}')
+        Log.info(f'Current Provisioner      : {self.provisioner_name}')
         if self.provider_name != LUDUS:
-            Log.info(f'Current IP range    : {self.ip_range}.X')
-        Log.info(f'Extension(s)        :')
+            Log.info(f'Current IP range         : {self.ip_range}.X.X')
+        Log.info(f'Current network bridge   : {self.network_bridge}')
+        Log.info(f'Extension(s)             :')
         for extension in self.extensions_name:
             Log.info(f' - {extension}')
 
@@ -41,7 +45,7 @@ class Settings:
         if self.provider_name == LUDUS:
             return f'{self.lab_name}/{self.provider_name}/{self.provisioner_name}'
         else:
-            return f'{self.lab_name}/{self.provider_name}/{self.provisioner_name}/{self.ip_range}.X'
+            return f'{self.lab_name}/{self.provider_name}/{self.provisioner_name}/{self.ip_range}.X.X'
 
     def set_lab_name(self, lab_name, refresh=True):
         """
@@ -130,12 +134,17 @@ class Settings:
                 self.provisioner_name = provisioner_name
         return self.provisioner_name
 
+    def set_network_bridge(self, network_bridge):
+        self.network_bridge = network_bridge
+        Log.info(f'Using {network_bridge}')
+        return self.network_bridge
+
     def set_ip_range(self, ip_range):
         error = False
         try:
             parts = ip_range.split('.')
-            if len(parts) >= 3 and all(0 <= int(parts[i]) < 256 for i in range(0, 3)):
-                self.ip_range = f'{parts[0]}.{parts[1]}.{parts[2]}'
+            if len(parts) >= 2 and all(0 <= int(parts[i]) < 256 for i in range(0, 2)):
+                self.ip_range = f'{parts[0]}.{parts[1]}'
                 return self.ip_range
             else:
                 error = True
@@ -145,8 +154,8 @@ class Settings:
             error = True  # `ip` isn't even a string
         if error:
             Log.error(f'entered value not valid')
-            Log.info(f'fallback to default ip range: 192.168.56.x')
-            self.ip_range = '192.168.56'
+            Log.info(f'fallback to default ip range: 10.0.x.x')
+            self.ip_range = '10.0'
         return self.ip_range
 
     def set_extensions(self, extensions_name):
