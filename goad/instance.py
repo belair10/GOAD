@@ -223,12 +223,44 @@ class LabInstance:
             Log.info(f'Instance vagrantfile created : {Utils.get_relative_path(instance_ludus_file)}')
 
     def _create_terraform_folder(self):
+
+        hosts = []
+        data = ''
+
+        with open(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name) + sep + 'windows.tf') as f:
+            data = f.readlines()
+            f.close()
+        
+        with open(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name) + sep + 'linux.tf') as f:
+            data.extend(f.readlines())
+            f.close()
+
+        for line in data:
+            if line.startswith('"'):
+                hosts.append(line.split('=')[0].strip().replace('"', ''))
+
+        Log.info(f'Loaded {len(hosts)} machines')
+
+        vlans = {}
+        if input('[*] Do you want to set up vlans? (y/N): ').lower() == 'y':
+            for host in hosts:
+                vlan = input(f'[*] Which VLAN should {host} use? (default : 0) ')
+                vlans[host] = int(vlan if vlan != '' else 0)
+        else:
+            for host in hosts:
+                vlans[host] = 0
+
+        Log.info(vlans)
+                
         # load lab files
+        windows_vm = ''
+        
         lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
         lab_windows_template = lab_environment.get_template("windows.tf")
         windows_vm = lab_windows_template.render(
             ip_range=self.ip_range,
-            network_bridge=self.network_bridge
+            network_bridge=self.network_bridge,
+            vlans=vlans
         )
         # windows_vm = ''
 
@@ -246,7 +278,8 @@ class LabInstance:
             lab_windows_template = lab_environment.get_template("linux.tf")
             linux_vm = lab_windows_template.render(
                 ip_range=self.ip_range,
-                network_bridge=self.network_bridge
+                network_bridge=self.network_bridge,
+                vlans=vlans
             )
 
         # load lab extensions content
@@ -277,7 +310,6 @@ class LabInstance:
                 lab_identifier=self.lab_name + '-' + self.instance_id,
                 lab_name=self.lab_name,
                 ip_range=self.ip_range,
-                # network_bridge=self.ne
                 provider_name=self.provider_name,
                 config=self.config
             )

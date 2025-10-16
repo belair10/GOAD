@@ -33,6 +33,7 @@ class LabManager(metaclass=SingletonMeta):
         self.current_settings.set_provider_name(self.config.get_value('default', PROVIDER), False)
         self.current_settings.set_provisioner_name(self.config.get_value('default', PROVISIONER))
         self.current_settings.set_ip_range(self.config.get_value('default', IP_RANGE))
+        self.current_settings.set_network_bridge(self.config.get_value('default', NETWORK_BRIDGE))
         if args.extensions:
             self.current_settings.set_extensions(args.extensions)
         return self

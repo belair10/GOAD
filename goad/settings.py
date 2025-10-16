@@ -16,7 +16,6 @@ class Settings:
         self.extensions_name = []
         self.ip_range = None
         self.network_bridge = None
-        # self.vlan = None
 
     def update(self, instance):
         """
