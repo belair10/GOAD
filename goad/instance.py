@@ -109,6 +109,7 @@ class LabInstance:
             "provisioner": self.provisioner_name,
             "ip_range": self.ip_range,
             "network_bridge": self.network_bridge,
+            "storage": self.storage,
             "extensions": self.extensions,
             "status": self.status,
             "is_default": self.is_default
