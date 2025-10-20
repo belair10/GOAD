@@ -14,6 +14,9 @@
 - name: users
   import_tasks: users.yml
 
+- name: sites
+  import_tasks: sites.yml
+
 # Managed BY
 - name: Assign managed_by domainlocal groups
   win_domain_group:

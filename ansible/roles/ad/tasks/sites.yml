@@ -1,0 +1,28 @@
+---
+- name: debug
+  debug:
+    msg: "{{ad_sites}}"
+
+# Create physical sites
+- name: Create sites
+  microsoft.ad.object:
+    name: "{{ item.key }}"
+    type: "site"
+    path: "{{ item.value.path }}"
+    domain_username: "{{domain_username}}"
+    domain_password: "{{domain_password}}"
+  with_dict: "{{ ad_sites }}"
+
+# Create subnets and links those objects to their respective sites
+- name: Create subnets and link to sites
+  microsoft.ad.object:
+    name: "{{ item.value.subnet }}"
+    type: "subnet"
+    path: "CN=Subnets,{{ item.value.path }}"
+    domain_username: "{{domain_username}}"
+    domain_password: "{{domain_password}}"
+    attributes: 
+      add:
+        siteObject: "CN={{ item.key }},{{ item.value.path }}"
+  with_dict: "{{ ad_sites }}"
+  
