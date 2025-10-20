@@ -456,8 +456,6 @@ class LabInstance:
             for i in range(1, number + 1):
                 
                 ip = ipaddress.ip_address(int(ip) + 1)
-                print(ip)
-
                 client = lab_linux_template.render(
                     ip_range=self.ip_range,
                     network_bridge=self.network_bridge,
@@ -477,13 +475,45 @@ class LabInstance:
                 linux_clients=linux_clients
             )
 
-            print(linux_clients)
-            instance_tf_file = self.instance_provider_path + sep + 'linux_clients.tf'
+            instance_tf_file = self.instance_provider_path + sep + 'windows_clients.tf'
             with open(instance_tf_file, mode='w', encoding='utf-8') as tf_file:
                 tf_file.write(tf_content)
                 Log.success(f'Instance Linux clients updated!')
+
         elif os == 'windows':
-            raise NotImplementedError
+            lab_windows_template = lab_environment.get_template("windows_clients.tf")
+            windows_clients = ''
+            subnet = subnet.split('.')
+            subnet[-1] = '1'
+            gateway = '.'.join(subnet)
+            print(gateway)
+            for i in range(1, number + 1):
+                
+                ip = ipaddress.ip_address(int(ip) + 1)
+                client = lab_windows_template.render(
+                    ip_range=self.ip_range,
+                    network_bridge=self.network_bridge,
+                    vlans=vlan,
+                    client_name=f'windows-client{i:02d}',
+                    client_ip=ip,
+                    client_gateway=gateway,
+                    client_vlan=vlan,
+                    lab_name=self.lab_name
+                )
+                windows_clients += "\n" + client
+
+            environment = Environment(loader=FileSystemLoader(GoadPath.get_template_path(self.provider_name)))
+            
+            tf_template = environment.get_template('windows_clients.tf')
+            tf_content = tf_template.render(
+                windows_clients=windows_clients
+            )
+
+            instance_tf_file = self.instance_provider_path + sep + 'windows_clients.tf'
+            with open(instance_tf_file, mode='w', encoding='utf-8') as tf_file:
+                tf_file.write(tf_content)
+                Log.success(f'Instance Windows clients updated!')
+                
         else:
             Log.error('Invalid client os!')
 
