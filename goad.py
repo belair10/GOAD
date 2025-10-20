@@ -324,13 +324,24 @@ class Goad(cmd.Cmd):
 
     def do_add_clients(self, arg=''):
         if arg == '':
-            Log.error('Usage: add_clients windows|linux number subnet')
-        arg = arg.split(' ')
-        client_type = arg[0]
-        client_number = arg[1]
-        client_subnet = arg[2]
+            Log.error('Usage: add_clients windows|linux number ip_range vlan')
+        else:
+            arg = arg.split(' ')
+            if len(arg) == 4:
 
-        self.lab_manager
+                client_os = arg[0]
+                client_number = int(arg[1])
+                client_ip_start = arg[2]
+                client_vlan = int(arg[3])
+
+                Log.info(f'Client OS           : {client_os}')
+                Log.info(f'Number of clients   : {client_number}')
+                Log.info(f'Client subnet       : {client_ip_start}')
+                Log.info(f'Client vlan         : {client_vlan}')
+                self.lab_manager.add_clients(client_os, client_number, client_ip_start, client_vlan)
+            else:
+                Log.error('Wrong syntax')
+        
 
     def do_provision_extension(self, arg):
         if arg == '':
@@ -403,6 +414,7 @@ class Goad(cmd.Cmd):
     def do_create_empty(self, arg=''):
         Log.info('Create instance folder')
         self.lab_manager.create_instance()
+        self.refresh_prompt()
 
     def do_set_as_default(self, arg):
         self.lab_manager.set_as_default_instance()

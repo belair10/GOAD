@@ -1,6 +1,7 @@
 import json
 import shutil
 import os
+import ipaddress
 from jinja2 import Template, Environment, FileSystemLoader
 from goad.goadpath import *
 from goad.log import Log
@@ -439,6 +440,54 @@ class LabInstance:
 
     def get_status(self):
         return self.status
+    
+    def add_clients(self, os: str, number: int, subnet: str, vlan: int):
+
+        lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
+        ip = ipaddress.ip_address(subnet)
+
+        if os == 'linux':
+            lab_linux_template = lab_environment.get_template("linux_clients.tf")
+            linux_clients = ''
+            subnet = subnet.split('.')
+            subnet[-1] = '1'
+            gateway = '.'.join(subnet)
+            print(gateway)
+            for i in range(1, number + 1):
+                
+                ip = ipaddress.ip_address(int(ip) + 1)
+                print(ip)
+
+                client = lab_linux_template.render(
+                    ip_range=self.ip_range,
+                    network_bridge=self.network_bridge,
+                    vlans=vlan,
+                    client_name=f'linux-client{i:02d}',
+                    client_ip=ip,
+                    client_gateway=gateway,
+                    client_vlan=vlan,
+                    lab_name=self.lab_name
+                )
+                linux_clients += "\n" + client
+
+            environment = Environment(loader=FileSystemLoader(GoadPath.get_template_path(self.provider_name)))
+            
+            tf_template = environment.get_template('linux_clients.tf')
+            tf_content = tf_template.render(
+                linux_clients=linux_clients
+            )
+
+            print(linux_clients)
+            instance_tf_file = self.instance_provider_path + sep + 'linux_clients.tf'
+            with open(instance_tf_file, mode='w', encoding='utf-8') as tf_file:
+                tf_file.write(tf_content)
+                Log.success(f'Instance Linux clients updated!')
+        elif os == 'windows':
+            raise NotImplementedError
+        else:
+            Log.error('Invalid client os!')
+
+            
 
     def delete_instance(self):
         if not os.path.isdir(self.instance_path):

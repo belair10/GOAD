@@ -142,6 +142,9 @@ class LabManager(metaclass=SingletonMeta):
     def set_storage(self, storage):
         self.current_settings.set_storage(storage)
 
+    def add_clients(self, os, number, subnet, vlan):
+        self.current_instance.add_clients(os, number, subnet, vlan)
+
     def get_ip_range(self):
         return self.current_settings.ip_range
 
