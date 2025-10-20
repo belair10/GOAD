@@ -1,8 +1,15 @@
+# - name: Ensure Administrator is part of Domain Admins
+#   win_domain_group_membership:
+#     name: "Domain Admins"
+#     members:
+#       - Administrator
+#     state: present
+
 - name: Ensure Administrator is part of Domain Admins
-  win_domain_group_membership:
+  microsoft.ad.group:
     name: "Domain Admins"
     members:
-      - Administrator
+      add: Administrator
     state: present
 
 - name: organisation units
@@ -18,45 +25,54 @@
   import_tasks: sites.yml
 
 # Managed BY
-- name: Assign managed_by domainlocal groups
-  win_domain_group:
+- name: Assign managed_by to domain local groups
+  microsoft.ad.group:
     name: "{{ item.key }}"
     managed_by: "{{ item.value.managed_by }}"
+    scope: domainlocal
   with_dict: "{{ ad_groups['domainlocal'] }}"
   when: ad_groups['domainlocal'] is defined and item.value.managed_by is defined
 
-- name: Assign managed_by universal groups
-  win_domain_group:
+- name: Assign managed_by to universal groups
+  microsoft.ad.group:
     name: "{{ item.key }}"
     managed_by: "{{ item.value.managed_by }}"
+    scope: universal
   with_dict: "{{ ad_groups['universal'] }}"
   when: ad_groups['universal'] is defined and item.value.managed_by is defined
 
-- name: Assign managed_by global groups
-  win_domain_group:
+- name: Assign managed_by to global groups
+  microsoft.ad.group:
     name: "{{ item.key }}"
     managed_by: "{{ item.value.managed_by }}"
+    scope: global
   with_dict: "{{ ad_groups['global'] }}"
   when: ad_groups['global'] is defined and item.value.managed_by is defined
 
 # Add members
 - name: Add members to the Universal group, preserving existing membership
-  community.windows.win_domain_group_membership:
+  microsoft.ad.group:
     name: "{{ item.key }}"
-    members: "{{ item.value.members }}"
+    scope: universal
+    members: 
+      add: "{{ item.value.members }}"
   with_dict: "{{ ad_groups['universal'] }}"
   when: ad_groups['universal'] is defined and item.value.members is defined
 
 - name: Add members to the Global group, preserving existing membership
-  community.windows.win_domain_group_membership:
+  microsoft.ad.group:
     name: "{{ item.key }}"
-    members: "{{ item.value.members }}"
+    scope: global
+    members: 
+      add: "{{ item.value.members }}"
   with_dict: "{{ ad_groups['global'] }}"
   when: ad_groups['global'] is defined and item.value.members is defined
 
 - name: Add members to the Domainlocal group, preserving existing membership
-  community.windows.win_domain_group_membership:
+  microsoft.ad.group:
     name: "{{ item.key }}"
-    members: "{{ item.value.members }}"
+    scope: domainlocal
+    members: 
+      add: "{{ item.value.members }}"
   with_dict: "{{ ad_groups['domainlocal'] }}"
   when: ad_groups['domainlocal'] is defined and item.value.members is defined
