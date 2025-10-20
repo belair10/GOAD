@@ -1,7 +1,4 @@
 ---
-- name: debug
-  debug:
-    msg: "{{ad_sites}}"
 
 # Create physical sites
 - name: Create sites
