@@ -18,7 +18,7 @@
     domain_password: "{{lab.domains[domain].domain_password}}"
     domain_server: "{{lab.hosts[dict_key].hostname}}.{{domain}}"
     ad_users: "{{lab.domains[lab.hosts[dict_key].domain].users}}"
-    ad_ou: "{{lab.domains[lab.hosts[dict_key].domain].organisation_units  | default({}) }}"
+    ad_ou: "{{lab.domains[lab.hosts[dict_key].domain].organizational_units  | default({}) }}"
     ad_groups: "{{lab.domains[lab.hosts[dict_key].domain].groups}}"
     ad_sites: "{{lab.domains[lab.hosts[dict_key].domain].sites  | default({}) }}"
 
@@ -38,3 +38,14 @@
     hosts_dict: "{{lab.hosts}}"
     member_domain: "{{lab.hosts[dict_key].domain}}"
     domain_password: "{{lab.domains[member_domain].domain_password}}"
+
+- name: Create and promote RODCs
+  hosts: rodc
+  gather_facts: false
+  roles:
+    - { role: rodc, tags: rodc}
+  vars:
+    domain_username: "{{domain}}\\{{admin_user}}"
+    domain_password: "{{lab.domains[domain].domain_password}}"
+    domain: "{{lab.hosts[dict_key].domain}}"
+    site: "{{lab.hosts[dict_key].site}}"

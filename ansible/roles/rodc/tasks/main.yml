@@ -1,0 +1,59 @@
+---
+
+- name: Check if RODC belongs to correct site
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+        [String]$dc_name,
+        [String]$expected_site
+      )
+      $dc = Get-ADDomainController -Identity $dc_name -ErrorAction Stop
+      $isRODC = $dc.IsReadOnly
+      $site = $dc.Site
+
+      if (-not $isRODC) {
+        $Ansible.Result = "not_rodc"
+      }
+      if ($site -eq $expected_site) {
+        $Ansible.Result = "complete"
+        exit 0
+      } else {
+        $Ansible.Result = "wrong_site"
+        exit 2
+      }
+    parameters:
+      dc_name: "{{ inventory_hostname }}"
+      expected_site: "{{ site }}"
+  register: rodc_status
+
+- name: Demote DC
+  microsoft.ad.domain_controller:
+    domain_admin_password: "{{ domain_password }}"
+    domain_admin_user: "{{ domain_username }}"
+    state: member_server
+    local_admin_password: "{{ domain_password }}"
+    reboot: true
+  when: rodc_status.result == "wrong_site"
+
+- name: Restore "{{ansible_user}}"
+  ansible.windows.win_user:
+    name: vagrant
+    password: vagrant
+    state: present
+    groups:
+     - Administrators
+  when: rodc_status.result == "wrong_site"
+
+- name: Create RODC
+  microsoft.ad.domain_controller:
+    dns_domain_name: "{{ domain }}"
+    domain_admin_password: "{{ domain_password }}"
+    domain_admin_user: "{{ domain_username }}"
+    install_dns: true
+    read_only: true
+    reboot: true
+    state: domain_controller
+    site_name: "{{site}}"
+    safe_mode_password: "{{ domain_password }}"
+  when: rodc_status.result == "not_rodc" or rodc_status.result == "wrong_site"
