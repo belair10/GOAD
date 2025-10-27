@@ -32,6 +32,7 @@ variable "vm_template_id" {
       "WinServer2019_x64"  = {{config.get_value('proxmox_templates_id', 'winserver2019_x64', 0)}}
       "WinServer2016_x64"  = {{config.get_value('proxmox_templates_id', 'WinServer2016_x64', 0)}}
       "Windows10_22h2_x64" = {{config.get_value('proxmox_templates_id', 'windows10_22h2_x64', 0)}}
+      "WinServer2022_x64"  = {{config.get_value('proxmox_templates_id', 'WinServer2022_x64', 0)}}
   }
 }
 

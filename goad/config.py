@@ -59,6 +59,7 @@ class Config:
         config.set('proxmox_templates_id', 'WinServer2016_x64', '103')
         config.set('proxmox_templates_id', 'WinServer2019_x64_utd', '104')
         config.set('proxmox_templates_id', 'Windows10_22h2_x64', '105')
+        config.set('proxmox_templates_id', 'WinServer2022_x64', '106')
 
         config.add_section('ludus')
         config.set('ludus', '; api key must not have % if you have a % in it, change it by a %%')
