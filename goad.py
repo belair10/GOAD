@@ -1,4 +1,5 @@
 import cmd
+import readline
 import argparse
 import sys
 import time
@@ -13,6 +14,8 @@ class Goad(cmd.Cmd):
 
     def __init__(self, args):
         super().__init__()
+        delimiters = readline.get_completer_delims().replace('-', '')
+        readline.set_completer_delims(delimiters)
         # get the arguments
         self.args = args
         # prepare config, read configuration file and merge with args
@@ -155,6 +158,22 @@ class Goad(cmd.Cmd):
             self.lab_manager.get_current_instance().set_status(READY)
             time_provision = time.ctime(time.time() - start)[11:19]
             Log.info(f'Provisioned from {arg} in {time_provision}')
+
+    def complete_provision_lab_from(self, text, line, begidx, endidx):
+        options = self.lab_manager.get_plays()
+        if not text:
+            completions = options
+        else:
+            completions = [opt for opt in options if opt.lower().startswith(text.lower())]
+        return completions
+    
+    def complete_provision(self, text, line, begidx, endidx):
+        options = self.lab_manager.get_plays()
+        if not text:
+            completions = options
+        else:
+            completions = [opt for opt in options if opt.lower().startswith(text.lower())]
+        return completions
 
     def do_sync_source_jumpbox(self, arg=''):
         if self.lab_manager.get_current_instance_provisioner().use_jumpbox:

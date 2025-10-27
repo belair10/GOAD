@@ -142,6 +142,15 @@ class LabManager(metaclass=SingletonMeta):
     def set_storage(self, storage):
         self.current_settings.set_storage(storage)
 
+    def get_plays(self):
+        with open(GoadPath.get_playbooks_lab_config()) as f:
+            data = yaml.load(f, Loader=yaml.SafeLoader)
+
+        if self.current_settings.lab_name not in data:
+            return data['default']
+        else:
+            return data[self.current_settings.lab_name]
+            
     def add_clients(self, os, number, subnet, vlan):
         self.current_instance.add_clients(os, number, subnet, vlan)
 
