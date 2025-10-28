@@ -97,7 +97,7 @@ class LabInstances:
             table.add_row(f'[red]> [/red][green]{instance_id}[/green]' if instance_id == current_instance_id else instance_id,
                           instance.lab_name,
                           self.color_provider(instance.provider_name),
-                          instance.ip_range + '.0/24',
+                          instance.ip_range + '.0.0/16',
                           self.color_status(instance.status),
                           'Yes' if instance.is_default else 'No',
                           ", ".join(instance.extensions)
