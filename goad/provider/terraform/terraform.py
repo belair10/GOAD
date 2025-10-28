@@ -15,9 +15,13 @@ class TerraformProvider(Provider):
         return all(checks)
 
     def install(self):
-        self.command.run_terraform(['init'], self.path)
-        self.command.run_terraform(['plan'], self.path)
-        return self.command.run_terraform(['apply'], self.path)
+        try:
+            self.command.run_terraform(['init'], self.path)
+            self.command.run_terraform(['plan'], self.path)
+            return self.command.run_terraform(['apply'], self.path)
+        except KeyboardInterrupt as e:
+            Log.warning('Ctrl + C recieved, exiting...')
+            return False
 
     def destroy(self):
         return self.command.run_terraform(['destroy'], self.path)
