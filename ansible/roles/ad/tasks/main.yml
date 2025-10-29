@@ -54,6 +54,7 @@
   microsoft.ad.group:
     name: "{{ item.key }}"
     scope: universal
+    path: "{{item.value.path}}"
     members: 
       add: "{{ item.value.members }}"
   with_dict: "{{ ad_groups['universal'] }}"
@@ -63,6 +64,7 @@
   microsoft.ad.group:
     name: "{{ item.key }}"
     scope: global
+    path: "{{item.value.path}}"
     members: 
       add: "{{ item.value.members }}"
   with_dict: "{{ ad_groups['global'] }}"
@@ -72,6 +74,7 @@
   microsoft.ad.group:
     name: "{{ item.key }}"
     scope: domainlocal
+    path: "{{item.value.path}}"
     members: 
       add: "{{ item.value.members }}"
   with_dict: "{{ ad_groups['domainlocal'] }}"
