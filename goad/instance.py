@@ -26,6 +26,7 @@ class LabInstance:
         self.network_bridge = network_bridge
         self.storage = storage
         self.status = status
+        self.clients = {}
         if extensions is None:
             extensions = []
         self.extensions = extensions
@@ -481,26 +482,37 @@ class LabInstance:
                 Log.success(f'Instance Linux clients updated!')
 
         elif os == 'windows':
+            if (input('[*] Do you want to join clients to a domain? (y/N) ').lower() == 'y'):
+                domain = input('[*] Enter the domain: ')
+            else:
+                domain = 'NDJ'
             lab_windows_template = lab_environment.get_template("windows_clients.tf")
             windows_clients = ''
             subnet = subnet.split('.')
             subnet[-1] = '1'
             gateway = '.'.join(subnet)
             print(gateway)
-            for i in range(1, number + 1):
+            ip = ipaddress.ip_address(int(ip))
+            for i in range(len(self.clients), len(self.clients) + number):
                 
-                ip = ipaddress.ip_address(int(ip) + 1)
+                client_name = f'{domain.split(".")[0].upper()}-WS{i + 1:02d}'
                 client = lab_windows_template.render(
                     ip_range=self.ip_range,
                     network_bridge=self.network_bridge,
                     vlans=vlan,
-                    client_name=f'windows-client{i:02d}',
+                    client_name=client_name,
                     client_ip=ip,
                     client_gateway=gateway,
                     client_vlan=vlan,
                     lab_name=self.lab_name
                 )
                 windows_clients += "\n" + client
+                self.clients[client_name] = {
+                    'ansible_host' : ip, 
+                    'domain': domain, 
+                    'dns_domain': f'{domain.split(".")[0].upper()}-DC01'
+                }
+                ip = ipaddress.ip_address(int(ip) + 1)
 
             environment = Environment(loader=FileSystemLoader(GoadPath.get_template_path(self.provider_name)))
             
@@ -513,9 +525,29 @@ class LabInstance:
             with open(instance_tf_file, mode='w', encoding='utf-8') as tf_file:
                 tf_file.write(tf_content)
                 Log.success(f'Instance Windows clients updated!')
+
+            if not self.update_inventory():
+                Log.error('Error while updating the instance inventory file with new clients!')
                 
         else:
             Log.error('Invalid client os!')
+
+    def update_inventory(self):
+        instance_inventory_file = self.instance_path + sep + 'inventory'
+        with open(instance_inventory_file, mode="a", encoding="utf-8") as inventory_file:
+            inventory_file.write('\n[default]\n')
+            for client, values in self.clients.items():
+                inventory_file.write(f'{client} ansible_host={values["ansible_host"]} dns_domain={values["dns_domain"]} dict_key={client.split("-")[0]}-workstations\n')
+
+            inventory_file.write('\n[workstations]\n')
+            for client, values in self.clients.items():
+                inventory_file.write(f'{client}\n')
+
+            inventory_file.write('\n[domain]\n')
+            for client, values in self.clients.items():
+                inventory_file.write(f'{client}\n')
+
+        return True
 
             
 
