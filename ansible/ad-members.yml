@@ -16,10 +16,11 @@
     domain_password: "{{lab.domains[member_domain].domain_password}}"
 
 - name: "play workstations AD configuration"
-  hosts: workstation
+  hosts: workstations
   roles:
-    - { role: 'commonwkstn', tags: 'workstation'}
+    - { role: 'commonwkstn', tags: 'workstations'}
   vars:
     member_domain: "{{lab.hosts[dict_key].domain}}"
     domain_username: "{{admin_user}}@{{member_domain}}"
     domain_password: "{{lab.domains[member_domain].domain_password}}"
+    hostname: "{{lab.hosts[dict_key].hostname|default(inventory_hostname)}}"

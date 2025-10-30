@@ -11,18 +11,14 @@
     - "{{hostvars[dns_domain].ansible_host}}"
     log_path: C:\dns_log.txt
 
-- name: "Add workstation to {{member_domain}}"
-  win_domain_membership:
+- debug:
+    msg: "{{domain_username}}, {{domain_password}}"
+
+- name: "Ensure workstation is joined to {{member_domain}}"
+  microsoft.ad.membership:
     dns_domain_name: "{{member_domain}}"
+    hostname: "{{hostname}}"
     domain_admin_user: "{{domain_username}}"
     domain_admin_password: "{{domain_password}}"
-#    domain_ou_path: "{{member_domain_ou_path}}"
     state: domain
-  register: domain_state
-
-- name: Reboot if needed
-  win_reboot:    
-    reboot_timeout: 1500
-    post_reboot_delay: 100
-  when: domain_state.reboot_required
-
+    reboot: true

@@ -15,5 +15,5 @@
   - { role: 'settings/hostname', tags: 'hostname' }
   vars:
     local_admin_password: "{{lab.hosts[dict_key].local_admin_password}}"
-    hostname: "{{lab.hosts[dict_key].hostname}}"
-    type: "{{lab.hosts[dict_key].type}}"
+    hostname: "{{lab.hosts[dict_key].hostname | default(inventory_hostname) }}"
+    type: "{{lab.hosts[dict_key].type | default('') }}"
