@@ -1,0 +1,77 @@
+- name: Create child domains
+  microsoft.ad.domain_child:
+    create_dns_delegation: true
+    dns_domain_name: "{{domain}}"
+    domain_admin_user: "{{enterprise_admin_user}}"
+    domain_admin_password: "{{enterprise_admin_password}}"
+    domain_type: "child"
+    install_dns: true
+    # parent_domain_name: "{{parent_domain}}"
+    reboot: true
+    replication_source_dc: "{{source_dc}}"
+    safe_mode_password: "{{safe_mode_password}}"
+    site_name: "{{site}}"
+
+# Set the forwarder on the parent domain's root DC to point to child domain's root DC
+- name: Create conditional DNS forwarders to child domains 
+  ansible.windows.win_dns_zone:
+    name: "{{domain}}"
+    type: forwarder
+    replication: "{{replication}}"
+    dns_servers:
+      - "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{lab.domains['.'.join(domain.split('.')[1:])].dc}}"
+
+# Set the forwarder to point to the parent domain's root DC
+- name: Create conditional DNS forwarders to parent domains
+  ansible.windows.win_dns_zone:
+    name: "{{'.'.join(domain.split('.')[1:])}}"
+    type: forwarder
+    replication: "{{replication}}"
+    dns_servers:
+      - "{{hostvars[lab.domains['.'.join(domain.split('.')[1:])].dc].ansible_host}}" 
+
+- name: Test if child DNS resolves correctly on parent domain
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $childDomain,
+          $childDomainDCIP
+      )
+
+      $res = Resolve-DnsName $childDomain -ErrorAction stop
+      if (($res).IPAddress -eq $childDomainDCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      childDomain: "{{domain}}"
+      childDomainDCIP: "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{lab.domains['.'.join(domain.split('.')[1:])].dc}}"
+
+- name: Test if parent DNS resolves correctly on child domain
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $parentDomain,
+          $parentDomainDCIP
+      )
+
+      $res = Resolve-DnsName $parentDomain -ErrorAction stop
+      if (($res).IPAddress -eq $parentDomainDCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      parentDomain: "{{'.'.join(domain.split('.')[1:])}}"
+      parentDomainDCIP: "{{hostvars[lab.domains['.'.join(domain.split('.')[1:])].dc].ansible_host}}"

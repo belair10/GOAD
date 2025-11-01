@@ -92,9 +92,11 @@ Naboo:
 default:
   - build.yml
   - ad-servers.yml
-  - ad-parent_domain.yml
+  # - ad-parent_domain.yml
+  - ad-forests.yml
+  - ad-domains.yml
   # Wait after the child domain creation before adding servers
-  - ad-child_domain.yml
+  # - ad-child_domain.yml
   # Waiting 5 minutes for the child domain to be ready
   - wait5m.yml
   - ad-members.yml

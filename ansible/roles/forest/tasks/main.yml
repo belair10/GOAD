@@ -1,0 +1,107 @@
+- name: "disable the registration of the {{nat_adapter}} interface (NAT address) in DNS"
+  ansible.windows.win_shell:
+    Get-NetAdapter {{nat_adapter}} | Set-DNSClient -RegisterThisConnectionsAddress $False
+  when: two_adapters
+
+- name: Create forests
+  microsoft.ad.domain:
+    # create_dns_delegation: true
+    dns_domain_name: "{{domain}}"
+    safe_mode_password: "{{safe_mode_password}}"
+    reboot: true
+
+- name: Be sure DNS feature is installed
+  win_feature:
+    name: DNS
+    state: present
+
+- name: Check for xDnsServer Powershell module
+  win_psmodule:
+    name: xDnsServer
+    state: present
+
+- name: Enable only the {{domain_adapter}} interface (local) for DNS client requests
+  ansible.windows.win_shell: dnscmd . /resetlistenaddresses {{ hostvars[dict_key].ansible_host }}
+  when: two_adapters
+
+- name: Configure DNS Forwarders
+  win_dsc:
+    resource_name: xDnsServerForwarder
+    IsSingleInstance: "yes"
+    UseRootHint: false
+    IPAddresses:
+      - "{{dns_server_forwarder}}"
+
+- name: Install XactiveDirectory
+  win_psmodule:
+    name: ActiveDirectoryDSC
+    state: present
+
+# Set the forwarder on the forest root domain's root DC to point to forest root domain's root DC
+- name: Create conditional DNS forwarders from forests root domains 
+  community.windows.win_dns_zone:
+    name: "{{domain}}"
+    type: forwarder
+    replication: "{{dns_replication}}"
+    dns_servers:
+      - "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['forest_root_dc'] }}"
+  when: lab.hosts[item].domain != domain
+
+- name: Test if DNS resolves correctly from forest root domains
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $forestRootDomain,
+          $forestRootDomainDCIP
+      )
+
+      $res = Resolve-DnsName $forestRootDomain -ErrorAction stop
+      if (($res).IPAddress -eq $forestRootDomainDCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      forestRootDomain: "{{domain}}"
+      forestRootDomainDCIP: "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['forest_root_dc'] }}"
+
+- name: Test if DNS resolves correctly to forest root domains
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $remoteForestRootDomain,
+          $remoteForestRootDomainDCIP
+      )
+
+      $res = Resolve-DnsName $remoteForestRootDomain -ErrorAction stop
+      if (($res).IPAddress -eq $remoteForestRootDomainDCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      remoteForestRootDomain: "{{lab.hosts[item].domain}}"
+      remoteForestRootDomainDCIP: "{{hostvars[item].ansible_host}}"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['forest_root_dc'] }}"
+
+- name: "Ensure Administrator is part of Domain- and Enterprise Admins in"
+  microsoft.ad.user:
+    name: Administrator
+    groups:
+      add:
+        - "Domain Admins"
+        - "Enterprise Admins"
+    password: "{{enterprise_admin_password}}"

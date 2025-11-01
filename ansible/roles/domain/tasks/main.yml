@@ -1,0 +1,38 @@
+- name: "Disable the registration of the {{nat_adapter}} interface (NAT address) in DNS"
+  ansible.windows.win_shell: Get-NetAdapter {{nat_adapter}} | Set-DNSClient -RegisterThisConnectionsAddress $False
+  when: two_adapters
+
+- name: "Set configure dns to {{dns_domain}}"
+  win_dns_client:
+    adapter_names: "{{domain_adapter}}"
+    ipv4_addresses:
+      - "{{hostvars[dns_domain].ansible_host}}"
+    log_path: C:\dns_log.txt
+
+- name: Install windows features - AD Domain Services
+  win_feature:
+    name: AD-Domain-Services
+    state: present
+    include_management_tools: yes
+  register: features
+
+- name: Install windows features - RSAT-ADDS
+  win_feature:
+    name: RSAT-ADDS
+    state: present
+    include_management_tools: yes
+  register: features
+
+- ansible.builtin.include_tasks: "child.yml"
+  when: domain_type == "child"
+  
+- ansible.builtin.include_tasks: "tree.yml"
+  when: domain_type == "tree"
+
+- name: "Ensure Administrator is part of Domain Admins"
+  microsoft.ad.user:
+    name: Administrator
+    groups:
+      add:
+        - "Domain Admins"
+    password: "{{domain_password}}"

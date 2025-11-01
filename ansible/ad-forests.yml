@@ -1,0 +1,25 @@
+---
+# Load datas
+- import_playbook: data.yml
+  vars:
+    data_path: "../ad/{{domain_name}}/data/"
+  tags: 'data'
+
+# set AD datas ==================================================================================================
+
+# forest configuration
+- name: Main forest configuration
+  hosts: forest_root_dc
+  roles:
+  - { role: 'forest', tags: 'forest' }
+  - { role: 'sites', tags: 'sites' }
+  vars:
+    # FOREST VARS
+    domain: "{{lab.hosts[dict_key].domain}}"
+    enterprise_admin_username: "{{admin_user}}@{{domain}}"
+    enterprise_admin_password: "{{lab.domains[domain].domain_password}}"
+    safe_mode_password: "{{lab.domains[domain].safe_mode_password|default(enterprise_admin_password)}}"
+    dns_replication: "forest"
+    # SITE VARS 
+    sites: "{{lab.domains[domain].sites|default({})}}"
+    site: "{{lab.hosts[dict_key].site | default('Default-First-Site-Name')}}"

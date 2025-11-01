@@ -1,0 +1,35 @@
+---
+- import_playbook: data.yml
+  vars:
+    data_path: "../ad/{{domain_name}}/data/"
+
+- name: Domain configuration
+  hosts: child_dc, tree_root_dc
+  roles:
+  - { role: 'domain', tags: 'domain' }
+  # - { role: 'dns_conditional_forwarder', tags: 'dns_conditional_forwarder' }
+  - { role: 'sync_domains' }
+  vars:
+    domain: "{{lab.hosts[dict_key].domain}}"
+    domain_password: "{{lab.domains[domain].domain_password}}"
+    forest_root_domain: "{{lab.domains[domain].forest_root_domain | default('.'.join(domain.split('.')[-2:]))}}"
+    enterprise_admin_user: "{{admin_user}}@{{forest_root_domain}}"
+    enterprise_admin_password: "{{lab.domains[forest_root_domain].domain_password}}"
+    source_dc: "{{lab.hosts[lab.domains[forest_root_domain].dc].hostname}}.{{forest_root_domain}}"
+    domain_type: "{{'tree' if lab.domains[domain].forest_root_domain is defined else 'child'}}"
+    safe_mode_password: "{{lab.domains[domain].safe_mode_password | default(domain_password)}}"
+    site: "{{lab.hosts[dict_key].site|default('Default-First-Site-Name')}}"
+    replication: "forest"
+
+
+- name: Promote all DCs
+  hosts: dc
+  roles:
+  - { role: 'domain_controller', tags: 'dc' }
+  vars:
+    domain: "{{lab.hosts[dict_key].domain}}"
+    domain_admin_username: "{{admin_user}}@{{domain}}"
+    domain_admin_password: "{{lab.domains[domain].domain_password}}"
+    safe_mode_password: "{{lab.domains[domain].safe_mode_password | default(domain_admin_password)}}"
+    rodc: "{{ lab.hosts[dict_key].type == 'rodc' }}"
+    site: "{{lab.hosts[dict_key].site|default('Default-First-Site-Name')}}"

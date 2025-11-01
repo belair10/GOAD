@@ -1,0 +1,77 @@
+- name: Create tree domains
+  microsoft.ad.domain_child:
+    # create_dns_delegation: true
+    dns_domain_name: "{{domain}}"
+    domain_admin_user: "{{enterprise_admin_user}}"
+    domain_admin_password: "{{enterprise_admin_password}}"
+    domain_type: "tree"
+    install_dns: true
+    parent_domain_name: "{{forest_root_domain}}"
+    reboot: true
+    replication_source_dc: "{{source_dc}}"
+    safe_mode_password: "{{safe_mode_password}}"
+    site_name: "{{site}}"
+
+# Set the forwarder on the forest root domain's root DC to point to tree domain's root DC
+- name: Create conditional DNS forwarders to tree domains 
+  ansible.windows.win_dns_zone:
+    name: "{{domain}}"
+    type: forwarder
+    replication: "{{replication}}"
+    dns_servers:
+      - "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+
+# Set the forwarder to point to the forest root domain's root DC
+- name: Create conditional DNS forwarders to parent domains
+  ansible.windows.win_dns_zone:
+    name: "{{forest_root_domain}}"
+    type: forwarder
+    replication: "{{replication}}"
+    dns_servers:
+      - "{{hostvars[lab.domains[forest_root_domain].dc].ansible_host}}" 
+
+- name: Test if tree DNS resolves correctly on forest root domains
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $treeDomain,
+          $treeDCIP
+      )
+
+      $res = Resolve-DnsName $treeDomain -ErrorAction stop
+      if (($res).IPAddress -eq $treeDCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      treeDomain: "{{domain}}"
+      treeDCIP: "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+
+- name: Test if forest root DNS resolves correctly on tree domains
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $forestRootDomain,
+          $forestRootDomainDCIP
+      )
+
+      $res = Resolve-DnsName $forestRootDomain -ErrorAction stop
+      if (($res).IPAddress -eq $forestRootDomainDCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      forestRootDomain: "{{forest_root_domain}}"
+      forestRootDomainDCIP: "{{hostvars[lab.domains[forest_root_domain].dc].ansible_host}}"

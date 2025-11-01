@@ -1,0 +1,145 @@
+---
+# Create physical sites
+- name: Create sites
+  ansible.windows.win_powershell: 
+    script: |
+      [CmdletBinding()]
+      param (
+        [String]
+        $site_name,
+
+        [PSCredential]
+        $cred
+      )
+
+      if (-not (Get-ADReplicationSite -Filter "Name -eq '$site_name'" -Credential $cred -ErrorAction stop)) {
+        New-ADReplicationSite -Name $site_name -Credential $cred -ErrorAction stop
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+    parameters:
+      site_name: "{{ item.key }}"
+    sensitive_parameters:
+      - name: cred
+        username: "{{ enterprise_admin_username }}"
+        password: "{{ enterprise_admin_password }}"
+  with_dict: "{{ sites }}"
+
+- name: Create subnets and link to sites
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+        [String]
+        $site_name,
+        $subnet,
+
+        [PSCredential]
+        $cred
+      )
+
+      if (-not (Get-ADReplicationSubnet -Filter "Name -eq '$subnet'" -Credential $cred -ErrorAction stop)) {
+        New-ADReplicationSubnet -Name $subnet -Site $site_name -Credential $cred -ErrorAction stop
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+    parameters:
+      site_name: "{{ item.key }}"
+      subnet: "{{ item.value.subnet }}"
+    sensitive_parameters:
+      - name: cred
+        username: "{{ enterprise_admin_username }}"
+        password: "{{ enterprise_admin_password }}"
+  with_dict: "{{ sites }}"
+  
+- name: Ensure Site Links between sites exists
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $name,
+          [Array]
+          $sites,
+          [PSCredential]
+          $cred
+      )
+
+      $existingLink = Get-ADReplicationSiteLink -Filter "Name -eq '$name'"
+
+      if ($existingLink) {
+        # Merge existing sites with new ones
+        $allSitesMerged = ($existingLink.SitesIncluded + $sites) | Sort-Object -Unique
+        Set-ADReplicationSiteLink -Identity $name -SitesIncluded @{Add=$allSitesMerged} -Credential $cred -ErrorAction stop
+        $Ansible.changed = $false
+      }
+      else {
+        # Create new site link
+        New-ADReplicationSiteLink -Name $name -SitesIncluded $sites -Cost 100 -ReplicationFrequencyInMinutes 15 -Credential $cred -ErrorAction stop
+      }
+    parameters:
+      sites: "{{sites.keys()}}"
+      name: ALL-SITES
+    sensitive_parameters:
+      - name: cred
+        username: "{{ enterprise_admin_username }}"
+        password: "{{ enterprise_admin_password }}"
+    error_action: stop
+  when: sites.keys() | length > 1
+
+- name: Disable inter-site replication schedule
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $identity,
+          [PSCredential]
+          $cred
+      )
+
+      $obj = Get-ADObject -Identity $identity -Properties options
+      
+      if ($obj.options -ne 1) {
+        $newOption = $obj.options -bor 1
+        Set-ADObject -Identity $identity -Replace @{options = $newOption} -Credential $cred
+        $Ansible.Changed = $true
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+    parameters:
+      identity: "CN=IP,CN=Inter-Site Transports,CN=Sites,CN=Configuration,DC={{domain.split('.')[0]}},DC={{domain.split('.')[1]}}"
+    sensitive_parameters:
+      - name: cred
+        username: "{{ enterprise_admin_username }}"
+        password: "{{ enterprise_admin_password }}"
+
+- name: Ensure computer belongs to correct site
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $site,
+          $identity,
+          [PSCredential]
+          $cred
+      )
+
+      if ((Get-ADReplicationSite).Name -ne $site) {
+        Move-ADDirectoryServer -Credential $cred -Identity $identity -Site $site -ErrorAction stop
+        $Ansible.changed = $true
+      }
+      else {
+        $Ansible.changed = $false
+      }
+    parameters:
+      site: "{{site}}"
+      identity: "{{lab.hosts[dict_key].hostname|default(inventory_hostname)}}"
+    sensitive_parameters:
+      - name: cred
+        username: "{{ enterprise_admin_username }}"
+        password: "{{ enterprise_admin_password }}"
