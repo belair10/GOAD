@@ -127,3 +127,42 @@
 #       netdom trust MyDomain /domain:devgroup.example.com /verify /kerberos /userd:devgroup\admin /passwordd:* /usero:MyDomain\admin /passwordo:*
 
 # check https://github.com/lewill03/ADTrust/blob/main/ADTrust.psm1
+
+- name: Create forest trusts
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $RemoteForest,
+
+          [PSCredential]
+          $remoteCred
+      )
+      $localforest=[System.DirectoryServices.ActiveDirectory.Forest]::getCurrentForest()
+      try {
+        $localForest.GetTrustRelationship($RemoteForest)
+        $Ansible.Changed = $false
+      } catch [System.DirectoryServices.ActiveDirectory.ActiveDirectoryObjectNotFoundException] {
+        $Ansible.Changed = $true
+        $remoteContext = New-Object -TypeName "System.DirectoryServices.ActiveDirectory.DirectoryContext" -ArgumentList @( "Forest", $RemoteForest, $remoteCred.Username, $remoteCred.GetNetworkCredential().Password)
+        $distantForest = [System.DirectoryServices.ActiveDirectory.Forest]::getForest($remoteContext)
+        $localForest.CreateTrustRelationship($distantForest,"Bidirectional")
+      }
+    error_action: stop
+    parameters:
+      RemoteForest: "{{item.key}}"
+    sensitive_parameters:
+      - name: remoteCred
+        username: "administrator@{{item.key}}"
+        password: "{{lab.domains[item.key].domain_password}}"
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{domain_admin_username}}"
+    ansible_become_password: "{{domain_admin_password}}"
+  register:
+    trust_result
+  loop: "{{trusts | dict2items}}"
+  when: item.value.type == 'Forest'
+  notify: reboot

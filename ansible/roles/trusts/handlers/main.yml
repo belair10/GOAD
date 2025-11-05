@@ -1,0 +1,3 @@
+- name: reboot
+  win_reboot:
+    test_command: "Get-ADUser -Identity Administrator -Properties *"
