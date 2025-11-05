@@ -3,65 +3,127 @@
     ipconfig /flushdns
     ipconfig /renew
 
-# source : https://social.technet.microsoft.com/wiki/contents/articles/11911.active-directory-powershell-how-to-create-forest-trust.aspx
-- name: Add trusts between domain
+- name: Create bidirectional trusts
   ansible.windows.win_powershell:
     script: |
       [CmdletBinding()]
-      param (
+      param(
           [String]
-          $RemoteForest,
-
-          [String]
-          $RemoteAdmin,
-
-          [String]
-          $RemoteAdminPassword
+          $localDomain,
+          $remoteDomain,
+          [PSCredential]
+          $localCred,
+          $remoteCred
       )
-      $localforest=[System.DirectoryServices.ActiveDirectory.Forest]::getCurrentForest()
-      try {
-        $localForest.GetTrustRelationship($RemoteForest)
-        $Ansible.Changed = $false
-      } catch [System.DirectoryServices.ActiveDirectory.ActiveDirectoryObjectNotFoundException] {
-        $Ansible.Changed = $true
-        $remoteContext = New-Object -TypeName "System.DirectoryServices.ActiveDirectory.DirectoryContext" -ArgumentList @( "Forest", $RemoteForest, $RemoteAdmin, $RemoteAdminPassword)
-        $distantForest = [System.DirectoryServices.ActiveDirectory.Forest]::getForest($remoteContext)
-        $localForest.CreateTrustRelationship($distantForest,"Bidirectional")
+
+      if (-not (Get-ADTrust -Filter "Target -eq '$remoteDomain'")) {
+        $res = netdom trust $($localdomain) /domain:$($remoteDomain) /add /userd:$($remoteCred.Username) /twoway /passwordd:$($remoteCred.GetNetworkCredential().Password) /usero:$($localCred.Username) /passwordo:$($localCred.GetNetworkCredential().Password)
+        if (-not $res) {
+          $Ansible.Failed = $true
+          $Ansible.Result = "Check if trust file exists already"
+        }
       }
-    error_action: stop
+      else {
+        $Ansible.Changed = $false
+      }
     parameters:
-      RemoteForest: "{{remote_forest}}"
-      RemoteAdmin: "{{remote_admin}}"
-      RemoteAdminPassword: "{{remote_admin_password}}"
-  vars:
-    ansible_become: yes
-    ansible_become_method: runas
-    ansible_become_user: "{{domain_username}}"
-    ansible_become_password: "{{domain_password}}"
-  register:
-    trust_result
+      localDomain: "{{domain}}"
+      remoteDomain: "{{item.key}}"
+    sensitive_parameters:
+    - name: localCred
+      username: "{{domain_admin_username}}"
+      password: "{{domain_admin_password}}"
+    - name: remoteCred
+      username: "administrator@{{item.key}}"
+      password: "{{lab.domains[item.key].domain_password}}"
+  loop: "{{trusts | dict2items}}"
+  when: item.value.type == 'Bidirectional'
 
-- name: "Reboot and wait for the AD system to restart"
-  win_reboot:
-    test_command: "Get-ADUser -Identity Administrator -Properties *"
-  when: trust_result.changed
+- name: Create inbound trusts
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param(
+          [String]
+          $localDomain,
+          $remoteDomain,
+          $trustPassword,
+          [PSCredential]
+          $localCred,
+          $remoteCred
+      )
 
+      if (-not (Get-ADTrust -Filter "Target -eq '$remoteDomain'")) {
+        netdom trust $($remoteDomain) /domain:$($localdomain) /add /oneside:trusted /usero:$($localCred.Username) /passwordo:$($localCred.GetNetworkCredential().Password) /passwordt:$($trustPassword)
+        if (-not $?) {
+          $Ansible.Failed = $true
+          $Ansible.Result = "Check if trust file exists already"
+        }
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+    parameters:
+      localDomain: "{{domain}}"
+      remoteDomain: "{{item.key}}"
+      trustPassword: "{{trust_password}}"
+    sensitive_parameters:
+    - name: localCred
+      username: "{{domain_admin_username}}"
+      password: "{{domain_admin_password}}"
+    - name: remoteCred
+      username: "administrator@{{item.key}}"
+      password: "{{lab.domains[item.key].domain_password}}"
+  loop: "{{trusts | dict2items}}"
+  when: item.value.type == 'Inbound'
 
-#      $localforest=[System.DirectoryServices.ActiveDirectory.Forest]::getCurrentForest()
-#      try {
-#        $trustPassword = "TrustP@$$w0rd12"
-#        $localForest.CreateLocalSideOfTrustRelationship($RemoteForest,"Bidirectional",$trustPassword)
-#        $Ansible.Changed = $true
-#      } catch [System.DirectoryServices.ActiveDirectory.ActiveDirectoryObjectExistsException] {
-#        $Ansible.Changed = $false
+- name: Create outbound trusts
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param(
+          [String]
+          $localDomain,
+          $remoteDomain,
+          $trustPassword,
+          [PSCredential]
+          $localCred,
+          $remoteCred
+      )
 
-- name: Show trust result
-  win_shell: |
-    $obj = Get-CimInstance -Class Microsoft_DomainTrustStatus -Namespace root\microsoftactivedirectory
-    Write-Output -InputObject $obj
-  vars:
-    ansible_become: yes
-    ansible_become_method: runas
-    domain_name: "{{domain}}"
-    ansible_become_user: "{{domain_username}}"
-    ansible_become_password: "{{domain_password}}"
+      if (-not (Get-ADTrust -Filter "Target -eq '$remoteDomain'")) {
+        netdom trust $($localdomain) /domain:$($remoteDomain) /add /oneside:trusting /usero:$($localCred.Username) /passwordo:$($localCred.GetNetworkCredential().Password) /passwordt:$($trustPassword)
+        if (-not $?) {
+          $Ansible.Failed = $true
+          $Ansible.Result = "Check if trust file exists already"
+        }
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+    parameters:
+      localDomain: "{{domain}}"
+      remoteDomain: "{{item.key}}"
+      trustPassword: "{{trust_password}}"
+    sensitive_parameters:
+    - name: localCred
+      username: "{{domain_admin_username}}"
+      password: "{{domain_admin_password}}"
+    - name: remoteCred
+      username: "administrator@{{item.key}}"
+      password: "{{lab.domains[item.key].domain_password}}"
+  loop: "{{trusts | dict2items}}"
+  when: item.value.type == 'Outbound'
+  
+
+# - name: Create one-way trusts
+#   ansible.windows.win_powershell:
+#     script: |
+#       netdom trust fv.mil.se /domain:lfv.se /add /userd:LFV\Administrator /passwordd:Toortoor1337 /usero:MIL\Administrator /passwordo:Toortoor1337
+
+# - name: Verify that trust works with Kerberos
+#   ansible.windows.win_powershell:
+#     script: |
+#       netdom trust MyDomain /domain:devgroup.example.com /verify /kerberos /userd:devgroup\admin /passwordd:* /usero:MyDomain\admin /passwordo:*
+
+# check https://github.com/lewill03/ADTrust/blob/main/ADTrust.psm1
