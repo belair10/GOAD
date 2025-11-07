@@ -61,6 +61,19 @@ source "proxmox-iso" "windows" {
   winrm_use_ssl        = true
   winrm_username       = "${var.winrm_username}"
   task_timeout         = "40m"
+  bios                 = "ovmf"
+  machine              = "q35"
+  scsi_controller      = "virtio-scsi-single"
+  cpu_type             = "x86-64-v2-AES"
+  efi_config {
+    efi_storage_pool = "local-lvm"
+    pre_enrolled_keys = true
+    efi_format      = "raw"
+    efi_type        = "4m"
+  }
+  tpm_config {
+    tpm_storage_pool = "local-lvm"
+  }
 }
 
 build {
