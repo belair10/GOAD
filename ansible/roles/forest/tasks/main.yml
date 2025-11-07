@@ -97,7 +97,7 @@
   delegate_to: "{{ item }}"
   loop: "{{ groups['forest_root_dc'] }}"
 
-- name: "Ensure Administrator is part of Domain- and Enterprise Admins in"
+- name: "Ensure Administrator is part of Domain- and Enterprise Admins"
   microsoft.ad.user:
     name: Administrator
     groups:
