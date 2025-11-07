@@ -5,7 +5,7 @@
     password_never_expires: yes
     account_disabled: false
     state: present
-  when: type != "rodc"
+  when: inventory_hostname not in groups.dc
 
 #- name: Create administrator home directory
 #  ansible.windows.win_command: whoami
