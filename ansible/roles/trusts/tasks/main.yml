@@ -38,6 +38,7 @@
       password: "{{lab.domains[item.key].domain_password}}"
   loop: "{{trusts | dict2items}}"
   when: item.value.type == 'Bidirectional'
+  notify: reboot
 
 - name: Create inbound trusts
   ansible.windows.win_powershell:
@@ -76,6 +77,7 @@
       password: "{{lab.domains[item.key].domain_password}}"
   loop: "{{trusts | dict2items}}"
   when: item.value.type == 'Inbound'
+  notify: reboot
 
 - name: Create outbound trusts
   ansible.windows.win_powershell:
@@ -114,19 +116,7 @@
       password: "{{lab.domains[item.key].domain_password}}"
   loop: "{{trusts | dict2items}}"
   when: item.value.type == 'Outbound'
-  
-
-# - name: Create one-way trusts
-#   ansible.windows.win_powershell:
-#     script: |
-#       netdom trust fv.mil.se /domain:lfv.se /add /userd:LFV\Administrator /passwordd:Toortoor1337 /usero:MIL\Administrator /passwordo:Toortoor1337
-
-# - name: Verify that trust works with Kerberos
-#   ansible.windows.win_powershell:
-#     script: |
-#       netdom trust MyDomain /domain:devgroup.example.com /verify /kerberos /userd:devgroup\admin /passwordd:* /usero:MyDomain\admin /passwordo:*
-
-# check https://github.com/lewill03/ADTrust/blob/main/ADTrust.psm1
+  notify: reboot
 
 - name: Create forest trusts
   ansible.windows.win_powershell:
