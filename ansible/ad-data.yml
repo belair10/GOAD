@@ -7,7 +7,7 @@
 
 # set AD datas ==================================================================================================
 - name: DCs AD data configuration
-  hosts: dc
+  hosts: forest_root_dc,tree_root_dc,child_dc
   roles:
     - { role: 'password_policy', tags: 'policy', try_before_lock: "5", pass_length: "5", lock_duration: "00:05:00", lock_observation: "00:05:00", complexity: false}
     - { role: 'ad', tags: 'ad_domain_data' }
@@ -21,6 +21,7 @@
     ad_ou: "{{lab.domains[lab.hosts[dict_key].domain].organizational_units  | default({}) }}"
     ad_groups: "{{lab.domains[lab.hosts[dict_key].domain].groups}}"
     ad_sites: "{{lab.domains[lab.hosts[dict_key].domain].sites  | default({}) }}"
+    root_dc: "{{lab.domains[domain].dc}}"
 
 - name: "Servers AD data configuration"
   hosts: server
@@ -31,21 +32,10 @@
     domain_ou_path: "{{lab.hosts[dict_key].path}}"
 
 - name: "Move to OU"
-  hosts: dc
+  hosts: forest_root_dc,tree_root_dc,child_dc
   roles:
     - { role: 'move_to_ou', tags: 'move_to_ou'}
   vars:
     hosts_dict: "{{lab.hosts}}"
     member_domain: "{{lab.hosts[dict_key].domain}}"
     domain_password: "{{lab.domains[member_domain].domain_password}}"
-
-- name: Create and promote RODCs
-  hosts: rodc
-  gather_facts: false
-  roles:
-    - { role: rodc, tags: rodc}
-  vars:
-    domain_username: "{{domain}}\\{{admin_user}}"
-    domain_password: "{{lab.domains[domain].domain_password}}"
-    domain: "{{lab.hosts[dict_key].domain}}"
-    site: "{{lab.hosts[dict_key].site}}"
