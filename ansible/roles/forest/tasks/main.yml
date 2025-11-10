@@ -8,7 +8,19 @@
     # create_dns_delegation: true
     dns_domain_name: "{{domain}}"
     safe_mode_password: "{{safe_mode_password}}"
-    reboot: true
+    reboot: false
+  register: status
+
+- name: Reboot and wait for the AD DNS partitions to be created
+  ansible.windows.win_reboot:
+    test_command: |
+      $partitions = dnscmd localhost /enumdirectorypartitions 2>$null
+      if ($partitions -match "ForestDnsZones" -and $partitions -match "DomainDnsZones") {
+        exit 0   # Success - both partitions exist
+      } else {
+        exit 1   # Not ready yet
+      }
+  when: status.reboot_required
 
 - name: Be sure DNS feature is installed
   win_feature:
@@ -48,6 +60,8 @@
   delegate_to: "{{ item }}"
   loop: "{{ groups['forest_root_dc'] }}"
   when: lab.hosts[item].domain != domain
+  delay: 30
+  retries: 3
 
 - name: Test if DNS resolves correctly from forest root domains
   ansible.windows.win_powershell:
