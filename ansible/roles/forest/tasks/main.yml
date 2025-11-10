@@ -20,6 +20,7 @@
       } else {
         exit 1   # Not ready yet
       }
+    reboot_timeout: 1200
   when: status.reboot_required
 
 - name: Be sure DNS feature is installed
