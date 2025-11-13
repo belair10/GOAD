@@ -5,7 +5,7 @@ variable "linux_clients" {
     cores              = number
     memory             = number
     cloud-init-image   = string
-    dns                = string
+    dns                = list(string)
     ip                 = string
     gateway            = string
     network_bridge     = string
