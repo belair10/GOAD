@@ -17,11 +17,12 @@
     domain_username: "{{domain}}\\{{admin_user}}"
     domain_password: "{{lab.domains[domain].domain_password}}"
     domain_server: "{{lab.hosts[dict_key].hostname}}.{{domain}}"
-    ad_users: "{{lab.domains[lab.hosts[dict_key].domain].users}}"
+    ad_users: "{{lab.domains[lab.hosts[dict_key].domain].users | default({})}}"
     ad_ou: "{{lab.domains[lab.hosts[dict_key].domain].organizational_units  | default({}) }}"
-    ad_groups: "{{lab.domains[lab.hosts[dict_key].domain].groups}}"
-    ad_sites: "{{lab.domains[lab.hosts[dict_key].domain].sites  | default({}) }}"
+    ad_groups: "{{lab.domains[lab.hosts[dict_key].domain].groups | default([])}}"
+    ad_sites: "{{lab.domains[lab.hosts[dict_key].domain].sites | default({}) }}"
     root_dc: "{{lab.domains[domain].dc}}"
+    default_ldap_path: "DC={{',DC='.join(domain.split('.'))}}"
 
 - name: "Servers AD data configuration"
   hosts: server

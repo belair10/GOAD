@@ -3,7 +3,7 @@
     src: C:\windows\temp
     dest: C:\windows\temp
 
-- name: "Create users"
+- name: Create users
   microsoft.ad.user:
     identity: "{{ item.key }}"
     firstname: "{{item.value.firstname}}"
@@ -11,19 +11,20 @@
     password: "{{ item.value.password }}"
     password_never_expires: true
     state: present
-    path: "{{item.value.path}}"
+    path: "{{item.value.path|default('CN=Users,' + default_ldap_path)}}"
     description: "{{item.value.description | default('-')}}"
     groups: 
-      add: "{{ item.value.groups}}"
+      add: "{{ item.value.groups | default([])}}"
     city: "{{item.value.city | default('-')}}"
     domain_username: "{{domain_username}}"
     domain_password: "{{domain_password}}"
-  with_dict: "{{ ad_users }}"
+  loop: "{{ad_users | dict2items }}"
+  loop_control:
+    label: "{{item.key}}@{{domain}}"
   register: usercreate
   until: "usercreate is not failed"
   retries: 3
   delay: 30
-
 
 - name: Set users SPN lists
   microsoft.ad.user:

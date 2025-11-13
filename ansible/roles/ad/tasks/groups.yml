@@ -2,7 +2,7 @@
   microsoft.ad.group:
     name: "{{ item.key }}"
     scope: universal
-    path: "{{ item.value.path }}"
+    path: "{{ item.value.path | default(default_ldap_path)}}"
     state: present
   with_dict: "{{ ad_groups['universal'] }}"
   when: ad_groups['universal'] is defined and item.value.managed_by is not defined
@@ -11,7 +11,7 @@
   microsoft.ad.group:
     name: "{{ item.key }}"
     scope: global
-    path: "{{ item.value.path }}"
+    path: "{{ item.value.path | default(default_ldap_path)}}"
     state: present
   with_dict: "{{ ad_groups['global'] }}"
   when: ad_groups['global'] is defined and item.value.managed_by is not defined
@@ -20,7 +20,7 @@
   microsoft.ad.group:
     name: "{{ item.key }}"
     scope: domainlocal
-    path: "{{ item.value.path }}"
+    path: "{{ item.value.path | default(default_ldap_path)}}"
     state: present
   with_dict: "{{ ad_groups['domainlocal'] }}"
   when: ad_groups['domainlocal'] is defined and item.value.managed_by is not defined

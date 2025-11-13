@@ -2,5 +2,8 @@
   microsoft.ad.ou:
     name: "{{ item.key }}"
     state: present
-    path: "{{ item.value.path }}"
-  with_dict: "{{ad_ou}}"
+    path: "{{ item.value.path | default(default_ldap_path) }}"
+  # with_dict: "{{ad_ou}}"
+  loop: "{{ad_ou | dict2items}}"
+  loop_control:
+    label: "{{item.key}}"
