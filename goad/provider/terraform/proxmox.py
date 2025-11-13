@@ -9,6 +9,7 @@ from rich.table import Table
 from rich import print
 
 from datetime import datetime
+from time import sleep
 
 class ProxmoxProvider(TerraformProvider):
     provider_name = PROXMOX
@@ -212,8 +213,16 @@ class ProxmoxProvider(TerraformProvider):
         try:
             for vm in vm_ids:
                 Log.info(f'Taking snapshot of vmid: {vm} ...')
-                proxmox.nodes(self.pm_node).qemu(vm).snapshot.post(snapname=snapshot_name, vmstate=int(include_ram))
-                input('Waiting...')
+                pve_task = proxmox.nodes(self.pm_node).qemu(vm).snapshot.post(snapname=snapshot_name, vmstate=int(include_ram))
+                sleep(1)
+                
+                # status = {'finished' : False}
+                # # status['finished'] = False
+                # while not status['finished']:
+                #     status = self._is_task_finished(pve_task)
+                # if status['exitstatus'] != 'OK':
+                #     Log.error(f'Error while taking snapshot, error was: {status["exitstatus"]}')
+                #     return False
                 Log.success(f'Snapshot of vmid: {vm} created!')
         except Exception as e:
             print(e)
@@ -221,4 +230,32 @@ class ProxmoxProvider(TerraformProvider):
             return False
         return True
     
-    
+    def rollback(self, vm_ids: list[int], snapshot_name: str):
+        proxmox = self._get_proxmox()
+
+        if (input(f'[*] Are you sure you want to revert the lab to snapshot: {snapshot_name}? (N/y) ').lower() != 'y'):
+            Log.info('Keeping the current state, returning...')
+            return False
+        try:
+            for vm in vm_ids:
+                Log.info(f'Reverting back to snapshot: {snapshot_name}')
+                proxmox.nodes(self.pm_node).qemu(vm).snapshot(snapshot_name).rollback.post(start=1)
+                Log.success(f'Reverted vmid: {vm}')
+                sleep(2)
+        except Exception as e:
+            print(e)
+            Log.error('Error while rolling back snapshot!')
+            return False
+        
+    def _is_task_finished(self, upid: str) -> dict:
+        proxmox = self._get_proxmox()
+        res = proxmox.nodes(self.pm_node).tasks(upid).status.get()
+
+        tmp = {}
+        tmp['finished'] = res['status'] != 'running'
+        tmp['exitstatus'] = res['exitstatus'] if 'exitstatus' in res.keys() else ''
+        # if 'exitstatus' not in res.keys():
+        #     return (res['status'] != 'running', '')
+        # else:
+        #     return (res['status'] != 'running', res['exitstatus'])
+        return tmp

@@ -109,6 +109,15 @@ class Goad(cmd.Cmd):
 
         if self.lab_manager.get_current_instance_provider():
             self.lab_manager.get_current_instance_provider().snapshot(self.lab_manager.get_vm_ids(), include_ram=include_ram)    
+            # self.lab_manager.get_current_instance_provider().snapshot([104], include_ram=include_ram)    
+
+    def do_rollback(self, arg=''):
+        if arg == '':
+            Log.error('Usage: rollback <snapshot_name>')
+            return False
+        if self.lab_manager.get_current_instance_provider():
+            self.lab_manager.get_current_instance_provider().rollback(self.lab_manager.get_vm_ids(), snapshot_name=arg)    
+            # self.lab_manager.get_current_instance_provider().rollback([104], snapshot_name=arg)    
 
     def do_reset(self, arg=''):
         self.do_stop()
