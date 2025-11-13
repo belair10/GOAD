@@ -29,6 +29,31 @@
 - ansible.builtin.include_tasks: "tree.yml"
   when: domain_type == "tree"
 
+- name: Ensure DNS works and all domains are resolvable
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $domain,
+          $DCIP
+      )
+
+      $res = Resolve-DnsName $domain -ErrorAction stop
+      if (($res).IPAddress -eq $DCIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      domain: "{{item.key}}"
+      DCIP: "{{hostvars[item.value.dc].ansible_host}}"
+  loop: "{{lab.domains | dict2items }}"
+  loop_control:
+    label: "{{item.key}}"
+
 - name: "Ensure Administrator is part of Domain Admins"
   microsoft.ad.user:
     name: Administrator

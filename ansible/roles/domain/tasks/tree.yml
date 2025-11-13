@@ -1,3 +1,4 @@
+# Disable native reboot to ensure that DNS directory partitions are created before proceeding
 - name: Create tree domains
   microsoft.ad.domain_child:
     # create_dns_delegation: true
@@ -7,29 +8,138 @@
     domain_type: "tree"
     install_dns: true
     parent_domain_name: "{{forest_root_domain}}"
-    reboot: true
+    reboot: false
     replication_source_dc: "{{source_dc}}"
     safe_mode_password: "{{safe_mode_password}}"
     site_name: "{{site}}"
+  register: status
 
-# Set the forwarder on the forest root domain's root DC to point to tree domain's root DC
-- name: Create conditional DNS forwarders to tree domains 
+- name: Reboot and wait for AD DS to be available
+  ansible.windows.win_reboot:
+    test_command: Get-ADDomain
+  when: status.reboot_required
+
+# This is simply to make troubleshooting easier since this allows for login
+- name: Ensure Administrator is part of Domain Admins
+  microsoft.ad.user:
+    name: Administrator
+    groups:
+      add:
+        - "Domain Admins"
+    password: "{{domain_password}}"
+
+- name: Check if tree DNS zone exists on forest root DC
+  ansible.windows.win_powershell:
+    script: |
+      if (Get-DnsServerZone -Name "{{domain}}") {
+        $Ansible.Result = "present"
+      }
+      else {
+        $Ansible.Result = "absent"
+      }
+  register: zone
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+
+# Create a temporary forwarder to make DNS work during the replication stages
+- name: Create temporary conditional DNS forwarders to tree domains 
   ansible.windows.win_dns_zone:
     name: "{{domain}}"
     type: forwarder
-    replication: "{{replication}}"
+    replication: none
     dns_servers:
       - "{{hostvars[inventory_hostname].ansible_host}}"
   delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+  when: zone.result == "absent"
 
-# Set the forwarder to point to the forest root domain's root DC
-- name: Create conditional DNS forwarders to parent domains
+- name: Ensure DNS zone for tree domain exists in tree with forest replication
+  ansible.windows.win_powershell:
+    script: |
+      if ((Get-DnsServerZone -Name "{{domain}}" -ErrorAction SilentlyContinue).ReplicationScope -ne "Forest") {
+        Set-DnsServerPrimaryZone -Name "{{domain}}" -ReplicationScope "Forest" -ErrorAction Stop
+        $Ansible.Changed = $true
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "administrator"
+    ansible_become_password: "{{domain_password}}"
+
+- name: Ensure forest root DNS zone is set to forest replication
+  ansible.windows.win_powershell:
+    script: |
+      if ((Get-DnsServerZone -Name "{{forest_root_domain}}" -ErrorAction SilentlyContinue).ReplicationScope -ne "Forest") {
+        Set-DnsServerPrimaryZone -Name "{{forest_root_domain}}" -ReplicationScope "Forest" -ErrorAction Stop
+        $Ansible.Changed = $true
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{enterprise_admin_user}}"
+    ansible_become_password: "{{enterprise_admin_password}}"
+
+# - name: Sync forest from tree
+#   ansible.windows.win_powershell:
+#     script: repadmin /syncall /AdeP
+
+- name: Sync forest from root
+  ansible.windows.win_powershell:
+    script: repadmin /syncall /AdeP
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+
+- name: Wait for tree domain to replicate DNZ zones from forest root
+  ansible.windows.win_powershell:
+    script: |
+      Restart-Service dns
+
+      repadmin /syncall /AdeP
+
+      if(Get-DnsServerZone -Name "{{forest_root_domain}}") {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Failed = $true
+      }
+  retries: 50
+  delay: 20
+
+- name: Remove temporary DNS conditional forwarder
   ansible.windows.win_dns_zone:
-    name: "{{forest_root_domain}}"
+    name: "{{domain}}"
     type: forwarder
-    replication: "{{replication}}"
+    replication: none
     dns_servers:
-      - "{{hostvars[lab.domains[forest_root_domain].dc].ansible_host}}" 
+      - "{{hostvars[inventory_hostname].ansible_host}}"
+    state: absent
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+  when: zone.result == "absent"
+
+- name: Wait for forest root domain to replicate DNS zones from tree
+  ansible.windows.win_powershell:
+    script: |
+      Restart-Service dns
+
+      repadmin /syncall /AdeP
+
+      if(Get-DnsServerZone -Name "{{domain}}") {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Failed = $true
+      }
+  retries: 20
+  delay: 20
+  delegate_to: "{{lab.domains[forest_root_domain].dc}}"
+
+- name: Flush DNS before testing
+  ansible.windows.win_shell: ipconfig /flushdns
+  changed_when: false
 
 - name: Test if tree DNS resolves correctly on forest root domains
   ansible.windows.win_powershell:
@@ -75,3 +185,14 @@
     parameters:
       forestRootDomain: "{{forest_root_domain}}"
       forestRootDomainDCIP: "{{hostvars[lab.domains[forest_root_domain].dc].ansible_host}}"
+
+- name: Create conditional DNS forwarder in other forests
+  ansible.windows.win_dns_zone:
+    name: "{{domain}}"
+    type: forwarder
+    replication: none
+    dns_servers:
+      - "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['forest_root_dc'] }}"
+  when: item != lab.domains[forest_root_domain].dc

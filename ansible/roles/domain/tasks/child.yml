@@ -1,3 +1,4 @@
+# Disable native reboot to ensure that DNS directory partitions are created before proceeding
 - name: Create child domains
   microsoft.ad.domain_child:
     create_dns_delegation: true
@@ -11,25 +12,45 @@
     replication_source_dc: "{{source_dc}}"
     safe_mode_password: "{{safe_mode_password}}"
     site_name: "{{site}}"
+  register: status
+
+- name: Reboot and wait for the AD DNS partitions to be replicated
+  ansible.windows.win_reboot:
+    test_command: |
+      $partitions = dnscmd localhost /enumdirectorypartitions 2>$null
+      if ($partitions -match "ForestDnsZones" -and $partitions -match "DomainDnsZones") {
+        exit 0   # Success - both partitions exist
+      } else {
+        exit 1   # Not ready yet
+      }
+  when: status.reboot_required
 
 # Set the forwarder on the parent domain's root DC to point to child domain's root DC
-- name: Create conditional DNS forwarders to child domains 
-  ansible.windows.win_dns_zone:
-    name: "{{domain}}"
-    type: forwarder
-    replication: "{{replication}}"
-    dns_servers:
-      - "{{hostvars[inventory_hostname].ansible_host}}"
-  delegate_to: "{{lab.domains['.'.join(domain.split('.')[1:])].dc}}"
+# - name: Create conditional DNS forwarders to child domains 
+#   ansible.windows.win_dns_zone:
+#     name: "{{domain}}"
+#     type: forwarder
+#     replication: "{{replication}}"
+#     dns_servers:
+#       - "{{hostvars[inventory_hostname].ansible_host}}"
+#   delegate_to: "{{lab.domains['.'.join(domain.split('.')[1:])].dc}}"
 
 # Set the forwarder to point to the parent domain's root DC
-- name: Create conditional DNS forwarders to parent domains
-  ansible.windows.win_dns_zone:
-    name: "{{'.'.join(domain.split('.')[1:])}}"
-    type: forwarder
-    replication: "{{replication}}"
-    dns_servers:
-      - "{{hostvars[lab.domains['.'.join(domain.split('.')[1:])].dc].ansible_host}}" 
+# - name: Create conditional DNS forwarders to parent domains
+#   ansible.windows.win_dns_zone:
+#     name: "{{'.'.join(domain.split('.')[1:])}}"
+#     type: forwarder
+#     replication: "{{replication}}"
+#     dns_servers:
+#       - "{{hostvars[lab.domains['.'.join(domain.split('.')[1:])].dc].ansible_host}}"
+#   register: aaa
+
+# - debug:
+#     msg: "{{aaa}}"
+
+- name: Flush DNS before testing
+  ansible.windows.win_shell: ipconfig /flushdns
+  changed_when: false
 
 - name: Test if child DNS resolves correctly on parent domain
   ansible.windows.win_powershell:
