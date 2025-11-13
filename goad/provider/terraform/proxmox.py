@@ -8,6 +8,7 @@ import getpass
 from rich.table import Table
 from rich import print
 
+from datetime import datetime
 
 class ProxmoxProvider(TerraformProvider):
     provider_name = PROXMOX
@@ -199,3 +200,25 @@ class ProxmoxProvider(TerraformProvider):
 
     def destroy_vm(self, vm_name):
         pass
+
+    def snapshot(self, vm_ids: list[int], include_ram=False):
+        if (input(f'[*] Take snapshot of vmids: {vm_ids}? (N/y) ').lower() != 'y'):
+            Log.info('Taking no snapshots, returning...')
+            return False
+    
+        proxmox = self._get_proxmox()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        snapshot_name = f"snapshot_{timestamp}"
+        try:
+            for vm in vm_ids:
+                Log.info(f'Taking snapshot of vmid: {vm} ...')
+                proxmox.nodes(self.pm_node).qemu(vm).snapshot.post(snapname=snapshot_name, vmstate=int(include_ram))
+                input('Waiting...')
+                Log.success(f'Snapshot of vmid: {vm} created!')
+        except Exception as e:
+            print(e)
+            Log.error('Error while taking snapshot!')
+            return False
+        return True
+    
+    

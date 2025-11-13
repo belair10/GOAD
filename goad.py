@@ -103,11 +103,13 @@ class Goad(cmd.Cmd):
             self.lab_manager.get_current_instance_provider().destroy_vm(arg)
 
     def do_snapshot(self, arg=''):
-        self.do_stop()
+        include_ram = False
+        if arg.lower() == 'ram':
+            include_ram = True
+
         if self.lab_manager.get_current_instance_provider():
-            self.lab_manager.get_current_instance_provider().snapshot()
-        self.do_start()
-    
+            self.lab_manager.get_current_instance_provider().snapshot(self.lab_manager.get_vm_ids(), include_ram=include_ram)    
+
     def do_reset(self, arg=''):
         self.do_stop()
         if self.lab_manager.get_current_instance_provider():

@@ -227,3 +227,6 @@ class LabManager(metaclass=SingletonMeta):
         lab = self.get_lab(lab_name)
         provider = lab.get_provider(self.current_settings.provider_name)
         return provider.allowed_provisioners
+
+    def get_vm_ids(self) -> list[int]:
+        return self.current_instance.get_vm_ids()
