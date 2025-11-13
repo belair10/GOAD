@@ -1,0 +1,18 @@
+- name: Ensure Administrator is present with correct password and part of Domain- and Enterprise Admins in forests
+  microsoft.ad.user:
+    name: Administrator
+    groups:
+      add:
+        - "Domain Admins"
+        - "Enterprise Admins"
+    password: "{{lab.domains[domain].domain_password}}"
+  when: inventory_hostname in groups['forest_root_dc']
+
+- name: Ensure Administrator is present with correct password and part of Domain Admins in domains
+  microsoft.ad.user:
+    name: Administrator
+    groups:
+      add:
+        - "Domain Admins"
+    password: "{{lab.domains[domain].domain_password}}"
+  when: inventory_hostname in groups['child_dc'] or inventory_hostname in groups['tree_root_dc']

@@ -1,0 +1,24 @@
+- name: Test DNS
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+          [String]
+          $domain,
+          $domainIP
+      )
+
+      $res = Resolve-DnsName $domain -ErrorAction stop
+      if (($res).IPAddress -eq $domainIP) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Result = $res
+        $Ansible.Failed = $true
+      }
+    parameters:
+      domain: "{{item.key}}"
+      domainIP: "{{hostvars[lab.domains[item.key].dc].ansible_host}}"
+  loop: "{{lab.domains | dict2items}}"
+  loop_control: 
+    label: "{{item.key}}"

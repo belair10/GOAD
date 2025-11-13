@@ -1,0 +1,38 @@
+- name: Check if RDP is available
+  ansible.builtin.wait_for:
+    port: 3389
+    host: "{{hostvars[inventory_hostname].ansible_host}}"
+    timeout: 5
+  delegate_to: localhost
+  register: rdp
+  ignore_errors: true
+
+- name: Ensure the Remote Desktop service is running
+  ansible.windows.win_service:
+    name: TermService
+    start_mode: auto
+    state: started
+  when: rdp.failed
+
+- name: Ensure Remote Desktop is allowed in firewall
+  community.windows.win_firewall_rule:
+    name: Administrator access for RDP (TCP-In)
+    enabled: yes
+    direction: in
+    action: allow
+    protocol: TCP
+    localport: 3389
+    profiles: domain
+
+- name: Restart network adapter
+  ansible.windows.win_shell: Restart-NetAdapter -Name * -Confirm:$false
+  async: 10
+  poll: 0
+  when: rdp.failed
+
+- name: Ensure RDP is available
+  ansible.builtin.wait_for:
+    port: 3389
+    host: "{{hostvars[inventory_hostname].ansible_host}}"
+  delegate_to: localhost
+  when: rdp.failed

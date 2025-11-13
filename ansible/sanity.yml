@@ -1,0 +1,15 @@
+---
+# Load datas
+- import_playbook: data.yml
+  vars:
+    data_path: "../ad/{{domain_name}}/data/"
+  tags: 'data'
+
+- name: Run sanity checks
+  hosts: dc
+  roles:
+  - { role: sanity/admin_membership }
+  - { role: sanity/dns }
+  - { role: sanity/rdp, throttle: 1 }
+  vars:
+    domain: "{{lab.hosts[dict_key].domain}}"
