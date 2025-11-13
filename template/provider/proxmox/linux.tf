@@ -5,7 +5,7 @@ variable "lab_linux_config" {
     cores              = number
     memory             = number
     cloud-init-image   = string
-    dns                = string
+    dns                = list(string)
     ip                 = string
     gateway            = string
     network_bridge     = string
@@ -81,9 +81,7 @@ resource "proxmox_virtual_environment_vm" "linux" {
       }
       datastore_id = var.storage
       dns {
-        servers = [
-          each.value.dns
-        ]
+        servers = each.value.dns
       }
       ip_config {
         ipv4 {

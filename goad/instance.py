@@ -27,6 +27,7 @@ class LabInstance:
         self.storage = storage
         self.status = status
         self.clients = {}
+        self.vm_ids = []
         if extensions is None:
             extensions = []
         self.extensions = extensions
@@ -547,9 +548,7 @@ class LabInstance:
             for client, values in self.clients.items():
                 inventory_file.write(f'{client}\n')
 
-        return True
-
-            
+        return True     
 
     def delete_instance(self):
         if not os.path.isdir(self.instance_path):
@@ -571,3 +570,18 @@ class LabInstance:
     def update_ip_range(self, ip_range):
         self.ip_range = ip_range
         self.update_instance_folder()
+
+    def get_vm_ids(self) -> list[int]:
+        vm_ids = []
+
+        tf_state_file = self.instance_provider_path + sep + 'terraform.tfstate'
+
+        with open(tf_state_file) as f:
+            tfstate = json.load(f)
+
+        for resource in tfstate['resources']:
+            for instance in resource['instances']:
+                vm_ids.append(instance['attributes']['id'])
+
+        return vm_ids
+    
