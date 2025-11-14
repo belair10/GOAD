@@ -581,7 +581,7 @@ class LabInstance:
 
         for resource in tfstate['resources']:
             for instance in resource['instances']:
-                vm_ids.append(instance['attributes']['id'])
+                vm_ids.append(int(instance['attributes']['id']))
 
         return vm_ids
     

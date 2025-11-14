@@ -149,31 +149,24 @@ class ProxmoxProvider(TerraformProvider):
             except Exception as e:
                 print(f"Error fetching pool details or starting VMs/containers: {e}")
 
-    def stop(self):
+    def stop(self, vm_ids: list[int]):
         proxmox = self._get_proxmox()
         if proxmox is not None:
             try:
-                pool_members = proxmox.pools(self.pm_pool).get()
-                for member in pool_members['members']:
-                    node = member['node']
-                    vmid = member['vmid']
-                    vm_type = member['type']
-                    # Start QEMU VM
-                    if vm_type == 'qemu':
-                        try:
-                            Log.info(f"Stopping QEMU VM {vmid} on node {node}...")
-                            proxmox.nodes(node).qemu(vmid).status.stop.post()
-                            Log.success(f"QEMU VM {vmid} stopped successfully.")
-                        except Exception as e:
-                            Log.error(f"Error starting QEMU VM {vmid}: {e}")
-                    # Start LXC container
-                    elif vm_type == 'lxc':
-                        try:
-                            Log.info(f"Stopping LXC container {vmid} on node {node}...")
-                            proxmox.nodes(node).lxc(vmid).status.stop.post()
-                            Log.success(f"LXC container {vmid} stopped successfully.")
-                        except Exception as e:
-                            Log.error(f"Error starting LXC container {vmid}: {e}")
+                vms = proxmox.nodes(self.pm_node).qemu.get()
+                lxcs = proxmox.nodes(self.pm_node).lxc.get()
+
+                for vm in vms:
+                    if vm['vmid'] in vm_ids:
+                        Log.info(f"Stopping QEMU VM {vm['vmid']} on node {self.pm_node}...")
+                        proxmox.nodes(self.pm_node).qemu(vm['vmid']).status.stop.post()
+                        Log.success(f"QEMU VM {vm['vmid']} stopped successfully.")
+
+                for lxc in lxcs:
+                    if lxc['vmid'] in vm_ids:
+                        Log.info(f"Stopping LXC container {lxc['vmid']} on node {self.pm_node}...")
+                        proxmox.nodes(self.pm_node).qemu(lxc['vmid']).status.stop.post()
+                        Log.success(f"LXC container {lxc['vmid']} stopped successfully.")
             except Exception as e:
                 Log.error(f"Error fetching pool details or starting VMs/containers: {e}")
 
