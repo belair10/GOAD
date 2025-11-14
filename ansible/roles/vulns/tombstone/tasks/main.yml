@@ -1,0 +1,47 @@
+# Ensure the tomstoned object is present
+- name: Ensure tombstoned users are present
+  ansible.windows.win_powershell:
+    script: |
+      try {
+        $user = Get-ADUser -Identity "{{item}}"
+        $Ansible.Changed = $false
+        $Ansible.Result = $user.ObjectGUID
+      }
+      catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+        $Ansible.Failed = $true
+        $Ansible.Result = "Object is not present in AD, can not convert it to a tombstone"
+      }
+  loop: "{{vulns_vars.usernames}}"
+  register: tombstone_guids
+
+# Ensure tombstone lifetime is 180 days
+- name: Get tombstone lifetime 
+  ansible.windows.win_powershell:
+    script: |
+      $ADForestconfigurationNamingContext = (Get-ADRootDSE).configurationNamingContext
+      $DirectoryServicesConfigPartition = Get-ADObject -Identity “CN=Directory Service,CN=Windows NT,CN=Services,$ADForestconfigurationNamingContext” -Partition $ADForestconfigurationNamingContext -Properties *
+      $TombstoneLifetime = $DirectoryServicesConfigPartition.tombstoneLifetime
+      $Ansible.Result = $TombstoneLifetime
+      if ($TombstoneLifetime -ne 180) {
+        $Ansible.Failed = $true
+      }
+      $Ansible.Changed = $false
+
+- name: Convert users into tombstones
+  microsoft.ad.user:
+    identity: "{{item}}"
+    state: absent
+  loop: "{{vulns_vars.usernames}}"
+
+- name: Ensure the tombstones got created
+  ansible.windows.win_powershell:
+    script: |
+      if (-not (Get-ADObject -Filter {ObjectGUID -eq "{{item.result}}" -and Deleted -eq $True} -IncludeDeletedObjects)) {
+        $Ansible.Failed = $true
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+  loop: "{{tombstone_guids.results}}"
+  loop_control:
+    label: "{{item.item}}"

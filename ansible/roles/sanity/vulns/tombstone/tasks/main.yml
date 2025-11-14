@@ -1,0 +1,12 @@
+- name: Check if tombstones exists
+  ansible.windows.win_powershell:
+    script: |
+      if (Get-ADObject -Filter 'Name -like "{{item}}*" -and Deleted -eq $true' -IncludeDeletedObjects) {
+        $Ansible.Changed = $false
+      }
+      else {
+        $Ansible.Failed = $true
+        $Ansible.Result = "Tombstone for user: {{item}} was not found..."
+      }
+  loop: "{{vulns_vars.tombstone.usernames}}"
+  when: vulns_vars.tombstone is defined
