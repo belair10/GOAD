@@ -1,0 +1,11 @@
+{
+    "name": "bloodhound",
+    "description": "Adds Active Directory lab to bloodhound",
+    "machines": [
+        "bloodhound"
+    ],
+    "compatibility": [
+        "*"
+    ],
+    "impact": "Add a linux machine and runs sharphound on all domains"
+}

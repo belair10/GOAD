@@ -1,0 +1,73 @@
+- name: "Creating Directories"
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0744'
+  become: true  
+  loop:
+    - "/opt/bloodhound"
+    - "/opt/bloodhound/server"
+    - "/opt/bloodhound/ingest"
+
+- name: Download compose file
+  get_url:
+    url: "https://ghst.ly/getbhce"
+    dest: "/opt/bloodhound/server/docker-compose.yaml"
+  become: true
+
+- name: Change bloodhound port away from 8080
+  replace:    
+    path: "/opt/bloodhound/server/docker-compose.yaml"    
+    regexp: 'BLOODHOUND_PORT:-8080'
+    replace: 'BLOODHOUND_PORT:-8088'
+  become: true
+
+- name: Bind Bloodhound to 0.0.0.0
+  ansible.builtin.replace:
+    path: "/opt/bloodhound/server/docker-compose.yaml"    
+    regexp: 'BLOODHOUND_HOST:-127.0.0.1'
+    replace: 'BLOODHOUND_HOST:-0.0.0.0'
+  become: true
+
+- name: Download BloodHound docker images
+  community.docker.docker_compose_v2:
+    project_src: "/opt/bloodhound/server"
+    state: present
+  become: true
+
+- name: "Wait for bloodhound to be up"
+  wait_for:
+    host: "localhost"
+    port: 7474
+    delay: 10
+    timeout: 300
+  become: true
+
+- name: Check if password file exists
+  ansible.builtin.stat:
+    path: "/opt/bloodhound/server/initial-password.txt"
+  register: password_file
+
+# There probably is a better way to do this...
+- name: "Grab Bloodhound Password"
+  shell: 'cd /opt/bloodhound/server; docker compose logs bloodhound | grep -oP "Password Set To:\s+\K[\S]+"'
+  register: bloodhound_password
+  become: true
+  when: not password_file.stat.exists
+  ignore_errors: true
+
+- name: "Create file with bloodhound password"
+  copy:
+    content: "username: admin\npassword: {{ bloodhound_password.stdout }}"
+    dest: "/opt/bloodhound/server/initial-password.txt"
+  become: true
+  when: not password_file.stat.exists
+  ignore_errors: true
+
+- name: Bloodhound initial password
+  debug:
+    msg: "{{bloodhound_password.stdout}}"
+  when: not password_file.stat.exists
+  
+- name: Reset admin users password
+  ansible.builtin.pause:
