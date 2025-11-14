@@ -267,14 +267,6 @@ class LabInstance:
             network_bridge=self.network_bridge,
             vlans=vlans
         )
-        # windows_vm = ''
-
-        # if os.path.isfile(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name) + sep + 'windows.tf'):
-        #     lab_environment = Environment(loader=FileSystemLoader(GoadPath.get_lab_provider_path(self.lab_name, self.provider_name)))
-        #     lab_windows_template = lab_environment.get_template("windows.tf")
-        #     linux_vm = lab_windows_template.render(
-        #         ip_range=self.ip_range
-        #     )
 
         linux_vm = ''
 
@@ -289,19 +281,29 @@ class LabInstance:
 
         # load lab extensions content
         for extension in self.extensions:
+            vlan = input(f'[*] Which VLAN should {extension} use? (Default:0): ')
+            if vlan == '':
+                vlans[extension] = 0
+            else:
+                vlans[extension] = int(vlan)
+
             extension_provider_folder = GoadPath.get_extension_providers_provider_path(extension, self.provider_name)
             extension_environment = Environment(loader=FileSystemLoader(extension_provider_folder))
             if os.path.isfile(extension_provider_folder + sep + 'linux.tf'):
                 lab_extension_linux_template = extension_environment.get_template("linux.tf")
                 linux_vm += "\n" + lab_extension_linux_template.render(
                     lab_name=self.lab_name,
-                    ip_range=self.ip_range
+                    ip_range=self.ip_range,
+                    network_bridge=self.network_bridge,
+                    vlans=vlans
                 ) + "\n"
             if os.path.isfile(extension_provider_folder + sep + 'windows.tf'):
                 lab_extension_windows_template = extension_environment.get_template("windows.tf")
                 windows_vm += "\n" + lab_extension_windows_template.render(
                     lab_name=self.lab_name,
-                    ip_range=self.ip_range
+                    ip_range=self.ip_range,
+                    network_bridge=self.network_bridge,
+                    vlans=vlans
                 ) + "\n"
 
         # load template folder
