@@ -71,7 +71,7 @@ class Goad(cmd.Cmd):
 
     def do_start(self, arg=''):
         if self.lab_manager.get_current_instance_provider():
-            self.lab_manager.get_current_instance_provider().start()
+            self.lab_manager.get_current_instance_provider().start(self.lab_manager.get_vm_ids())
 
     def do_start_vm(self, arg):
         if arg == '':
