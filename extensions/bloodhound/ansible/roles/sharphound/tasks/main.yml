@@ -2,11 +2,16 @@
 # Run collectors
 # Upload to bloodhound
 
-- name: Create sharphound data directory
+- name: Create sharphound directory
   ansible.windows.win_file:
     path: C:\Collectors
     state: directory
     
+- name: Create sharphound data directory
+  ansible.windows.win_file:
+    path: C:\Collectors\data
+    state: directory
+
 - name: Download sharphound collector
   ansible.windows.win_get_url:
     url: https://github.com/SpecterOps/SharpHound/releases/download/v2.8.0/SharpHound_v2.8.0_windows_x86.zip
@@ -15,16 +20,16 @@
 - name: Unpack collector
   community.windows.win_unzip:
     src: C:\Collectors\SharpHound_v2.8.0_windows_x86.zip
-    dest: C:\Collectors\SharpHound_v2.8.0_windows_x86
+    dest: C:\Collectors
 
 - name: Run collector
-  ansible.windows.win_shell: ".\\SharpHound.exe -d {{domain}} --collectionmethods All" 
+  ansible.windows.win_shell: "..\\SharpHound.exe -d {{domain}} --collectionmethods All" 
   args:
-    chdir: C:\Collectors\SharpHound_v2.8.0_windows_x86\
+    chdir: C:\Collectors\data\
 
 - name: Find SharpHound output files on Windows
   ansible.windows.win_find:
-    paths: "C:\\Collectors\\SharpHound_v2.8.0_windows_x86"
+    paths: "C:\\Collectors\\data"
     patterns: "*.zip"
   register: sharphound_files
 
@@ -122,4 +127,14 @@
   delegate_to: bloodhound
   run_once: true
 
-  
+- name: Clean Bloodhound directory
+  ansible.builtin.shell:
+    rm -rf /opt/bloodhound/ingest/
+  delegate_to: bloodhound
+  run_once: true
+
+- name: Clean sharphound data directory
+  ansible.windows.win_shell: Remove-Item *
+  args:
+    chdir: C:\Collectors\data\
+    
