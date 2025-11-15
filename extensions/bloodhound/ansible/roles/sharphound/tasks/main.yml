@@ -53,17 +53,6 @@
   loop: "{{sharphound_files.files}}"
   loop_control:
     label: "{{item.filename}}"
-  
-- name: Load bloodhound password
-  ansible.builtin.command: "cat /opt/bloodhound/server/initial-password.txt"
-  register: bloodhound_password
-  delegate_to: bloodhound
-  run_once: true
-
-- name: Save Bloodhound password
-  ansible.builtin.set_fact:
-    bloodhound_password: "{{bloodhound_password.stdout_lines[1].split(' ')[1]}}"
-  run_once: true
 
 - name: Get JWT for bloodhound
   ansible.builtin.uri:
@@ -75,8 +64,7 @@
     body: 
       login_method: "secret"
       username: "admin"
-      # secret: "{{bloodhound_password}}"
-      secret: "Toortoor#1337"
+      secret: "{{bloodhound_password}}"
     status_code:
       - 200
   register: jwt

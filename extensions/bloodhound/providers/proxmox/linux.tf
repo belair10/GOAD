@@ -2,7 +2,7 @@
   name               = "{{lab_name}}-Bloodhound"
   desc               = "Bloodhound - AlmaLinux 9 - {{ip_range}}.0.254"
   cores              = 4
-  memory             = 4096
+  memory             = 8192
   dns                = ["8.8.8.8"]
   ip                 = "{{ip_range}}.0.254/24"
   network_bridge     = "{{network_bridge}}"
