@@ -1,7 +1,7 @@
 "bloodhound" = {
   name               = "{{lab_name}}-Bloodhound"
   desc               = "Bloodhound - AlmaLinux 9 - {{ip_range}}.0.254"
-  cores              = 1
+  cores              = 4
   memory             = 4096
   dns                = ["8.8.8.8"]
   ip                 = "{{ip_range}}.0.254/24"

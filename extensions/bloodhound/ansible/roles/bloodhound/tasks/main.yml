@@ -71,3 +71,4 @@
   
 - name: Reset admin users password
   ansible.builtin.pause:
+  when: not password_file.stat.exists

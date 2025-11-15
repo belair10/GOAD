@@ -6,10 +6,10 @@
 
 ---
 # Load datas
-# - import_playbook: ../../../ansible/data.yml
-#   vars:
-#     data_path: "../ad/{{domain_name}}/data/"
-#   tags: 'data'
+- import_playbook: ../../../ansible/data.yml
+  vars:
+    data_path: "../ad/{{domain_name}}/data/"
+  tags: 'data'
 
 - name: Install bloodhound
   hosts: bloodhound
@@ -18,7 +18,7 @@
     - { role: bloodhound }
 
 - name: Collect AD data
-  hosts: forest_root_dc
+  hosts: forest_root_dc,child_dc,tree_root_dc
   roles:
     - { role: sharphound }
   vars: 
