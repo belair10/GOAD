@@ -1,0 +1,95 @@
+- name: Check if password file exists
+  ansible.builtin.stat:
+    path: "/opt/bloodhound/server/initial-password.txt"
+  register: password_file
+
+- name: Load bloodhound password
+  ansible.builtin.command: "cat /opt/bloodhound/server/initial-password.txt"
+  register: bloodhound_password_file
+  when: password_file.stat.exists
+
+- name: Save Bloodhound password
+  ansible.builtin.set_fact:
+    bloodhound_password: "{{bloodhound_password_file.stdout_lines[1].split(' ')[1]}}"
+  when: password_file.stat.exists  
+
+# There probably is a better way to do this...
+- name: "Grab Bloodhound Password"
+  shell: 'cd /opt/bloodhound/server; docker compose logs bloodhound | grep -oP "Password Set To:\s+\K[\S]+"'
+  register: bloodhound_password_logs
+  become: true
+  when: not password_file.stat.exists
+
+- name: "Create file with bloodhound password"
+  copy:
+    content: "username: admin\npassword: {{ bloodhound_password_logs.stdout }}"
+    dest: "/opt/bloodhound/server/initial-password.txt"
+  become: true
+  when: not password_file.stat.exists
+
+- ansible.builtin.set_fact:
+    bloodhound_password: "{{bloodhound_password_logs.stdout}}"
+  when: not password_file.stat.exists
+
+- name: Bloodhound password
+  debug:
+    msg: "{{bloodhound_password}}"
+
+# Get JWT using initial password /api/v2/login 
+# Set the new password with `needs_password_reset: false` PUT /api/v2/bloodhound-users/{userid}/secret
+# Get new JWT using new password with auth_expired false
+
+- name: Get admin JWT
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/login"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body: 
+      login_method: "secret"
+      username: "admin"
+      secret: "{{bloodhound_password}}"
+    status_code:
+      - 200
+  register: jwt
+
+- ansible.builtin.set_fact:
+    user_id: "{{jwt.json.data.user_id}}"
+    auth_token: "Bearer {{jwt.json.data.session_token}}"
+
+- name: Enable and reset admin password
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/bloodhound-users/{{user_id}}/secret"
+    method: PUT
+    headers:
+      Authorization: "{{auth_token}}"
+      Content-Type: application/json
+    unredirected_headers:
+      - Authorization
+    body_format: json
+    body: 
+      current_secret: "{{bloodhound_password}}"
+      needs_password_reset: false
+      secret: "{{bloodhound_admin_password}}"
+    status_code:
+      - 200
+
+- name: Test admin auth
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/login"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body: 
+      login_method: "secret"
+      username: "admin"
+      secret: "{{bloodhound_admin_password}}"
+    status_code:
+      - 200
+  register: jwt
+
+- name: Assert admin auth
+  ansible.builtin.assert:
+    that: not "{{jwt.json.data.auth_expired}}"

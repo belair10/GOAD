@@ -1,0 +1,55 @@
+- name: Creating Directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0744'
+  become: true  
+  loop:
+    - "/opt/bloodhound"
+    - "/opt/bloodhound/server"
+    - "/opt/bloodhound/ingest"
+
+# Upload compose file instead
+- name: Copy docker compose file
+  ansible.builtin.copy:
+    src: docker-compose.yaml
+    dest: /opt/bloodhound/server/
+
+- name: Download BloodHound docker images
+  community.docker.docker_compose_v2:
+    project_src: "/opt/bloodhound/server"
+    state: present
+  become: true
+
+- name: Wait for Bloodhound to be up
+  wait_for:
+    host: "localhost"
+    port: 7474
+    delay: 10
+    timeout: 300
+  become: true
+
+- name: Wait for Bloodhound API to be up
+  ansible.builtin.wait_for:
+    host: localhost
+    port: 8088
+    timeout: 30
+
+- name: Check if admin password is valid
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/login"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body: 
+      login_method: "secret"
+      username: "admin"
+      secret: "{{bloodhound_admin_password}}"
+    status_code:
+      - 200
+      - 401
+  register: res
+
+- ansible.builtin.include_tasks: enable-admin.yml
+  when: res.status == 401

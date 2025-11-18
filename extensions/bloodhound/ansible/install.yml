@@ -1,0 +1,28 @@
+# Install docker
+# Download docker compose file
+# Configure bloodhound to be reachable on 0.0.0.0
+# Download sharphound to all forest root DCs
+# Ingest the collected data into bloodhound
+
+---
+# Load datas
+- import_playbook: ../../../ansible/data.yml
+  vars:
+    data_path: "../ad/{{domain_name}}/data/"
+  tags: 'data'
+
+- name: Install bloodhound
+  hosts: bloodhound
+  roles:
+    - { role: docker }
+    - { role: bloodhound }
+  vars:
+    bloodhound_admin_password: Toortoor#1337
+
+- name: Collect AD data
+  hosts: forest_root_dc,child_dc,tree_root_dc
+  roles:
+    - { role: sharphound }
+  vars: 
+    domain: "{{lab.hosts[dict_key].domain}}"
+    bloodhound_password: Toortoor#1337

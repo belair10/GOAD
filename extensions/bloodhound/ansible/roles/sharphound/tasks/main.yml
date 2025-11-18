@@ -1,0 +1,140 @@
+# Download sharphound on root DCs
+# Run collectors
+# Upload to bloodhound
+
+- name: Create sharphound directory
+  ansible.windows.win_file:
+    path: C:\Collectors
+    state: directory
+    
+- name: Create sharphound data directory
+  ansible.windows.win_file:
+    path: C:\Collectors\data
+    state: directory
+
+- name: Download sharphound collector
+  ansible.windows.win_get_url:
+    url: https://github.com/SpecterOps/SharpHound/releases/download/v2.8.0/SharpHound_v2.8.0_windows_x86.zip
+    dest: C:\Collectors
+
+- name: Unpack collector
+  community.windows.win_unzip:
+    src: C:\Collectors\SharpHound_v2.8.0_windows_x86.zip
+    dest: C:\Collectors
+
+- name: Run collector
+  ansible.windows.win_shell: "..\\SharpHound.exe -d {{domain}} --collectionmethods All" 
+  args:
+    chdir: C:\Collectors\data\
+
+- name: Find SharpHound output files on Windows
+  ansible.windows.win_find:
+    paths: "C:\\Collectors\\data"
+    patterns: "*.zip"
+  register: sharphound_files
+
+- name: Transfer SharpHound ZIP files to provisioning host
+  ansible.builtin.fetch:
+    src: "{{ item.path }}"
+    dest: "/dev/shm/{{inventory_hostname}}/"
+    flat: yes
+  loop: "{{ sharphound_files.files }}"
+  loop_control:
+    label: "{{item.path}}"
+
+- name: Ensure bloodhound data directory is present
+  ansible.builtin.file:
+    state: directory
+    path: /opt/bloodhound/ingest
+    mode: '0744'
+  delegate_to: bloodhound
+  run_once: true
+
+- name: Upload bloodhound data files to bloodhound host
+  ansible.builtin.copy:
+    src: "/dev/shm/{{inventory_hostname}}/{{item.filename}}"
+    dest: /opt/bloodhound/ingest/{{inventory_hostname}}/
+  delegate_to: bloodhound
+  loop: "{{sharphound_files.files}}"
+  loop_control:
+    label: "{{item.filename}}"
+
+- name: Get JWT for bloodhound
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/login"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body: 
+      login_method: "secret"
+      username: "admin"
+      secret: "{{bloodhound_password}}"
+    status_code:
+      - 200
+  register: jwt
+  delegate_to: bloodhound
+  run_once: true
+
+- ansible.builtin.set_fact:
+    auth_token: "Bearer {{jwt.json.data.session_token}}"
+
+- name: Create file upload job
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/file-upload/start"
+    method: POST
+    headers:
+      Authorization: "{{auth_token}}"
+    unredirected_headers:
+      - Authorization
+    status_code:
+      - 201
+  register: job_id
+  delegate_to: bloodhound
+  run_once: true
+
+- ansible.builtin.set_fact:
+    job_id: "{{job_id.json.data.id}}"
+
+- name: Upload files to Bloodhound
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/file-upload/{{job_id}}"
+    method: POST
+    headers:
+      Authorization: "{{auth_token}}"
+      Content-Type: "application/zip"
+    unredirected_headers:
+      - Authorization
+    remote_src: true 
+    src: "/opt/bloodhound/ingest/{{inventory_hostname}}/{{item.filename}}"
+    status_code:
+      - 202
+  loop: "{{sharphound_files.files}}"
+  loop_control:
+    label: "{{item.filename}}"
+  delegate_to: bloodhound
+
+- name: End file upload job
+  ansible.builtin.uri:
+    url: "http://localhost:8088/api/v2/file-upload/{{job_id}}/end"
+    method: POST
+    headers:
+      Authorization: "{{auth_token}}"
+    unredirected_headers:
+      - Authorization
+    status_code:
+      - 200
+  delegate_to: bloodhound
+  run_once: true
+
+- name: Clean Bloodhound directory
+  ansible.builtin.shell:
+    rm -rf /opt/bloodhound/ingest/
+  delegate_to: bloodhound
+  run_once: true
+
+- name: Clean sharphound data directory
+  ansible.windows.win_shell: Remove-Item *
+  args:
+    chdir: C:\Collectors\data\
+    
