@@ -11,5 +11,8 @@
   - { role: sanity/admin_membership }
   - { role: sanity/dns }
   - { role: sanity/rdp, throttle: 1 }
+  - { role: sanity/vulns/tombstone }
   vars:
     domain: "{{lab.hosts[dict_key].domain}}"
+    vulns_vars: "{{lab.hosts[dict_key].vulns_vars|default({})}}"
+
