@@ -119,86 +119,274 @@
 # https://adsecurity.org/?p=3658
 # https://docs.microsoft.com/en-us/previous-versions/tn-archive/ff405676(v=msdn.10)
 
-- name: set acl 
-  ansible.windows.win_powershell:
-    script: |
-      [CmdletBinding()]
-      param (
-          [String]
-          $for,
+# - name: set acl 
+#   ansible.windows.win_powershell:
+#     script: |
+#       [CmdletBinding()]
+#       param (
+#           [String]
+#           $for,
 
-          [String]
-          $to,
+#           [String]
+#           $to,
 
-          [String]
-          $right,
+#           [String]
+#           $right,
 
-          [String]
-          $inheritance
-      )
-      Import-Module ActiveDirectory
-      Set-Location AD:
-      $aclValues = 'AccessSystemSecurity', 'CreateChild', 'Delete', 'DeleteChild', 'DeleteTree', 'ExtendedRight', 'GenericAll', 'GenericExecute', 'GenericRead', 'GenericWrite', 'ListChildren', 'ListObject', 'ReadControl', 'ReadProperty', 'Self', 'Synchronize', 'WriteDacl', 'WriteOwner', 'WriteProperty'
-      $aclExtendValues = 'Ext-User-Force-Change-Password', 'Ext-Self-Self-Membership', 'Ext-Write-Self-Membership', 'Ext-ManageCA'
-      if ($for.StartsWith("NT AUTHORITY")) {
-        $forSID = New-Object System.Security.Principal.NTAccount "$for"
-      } else {
-        $forSID = New-Object System.Security.Principal.SecurityIdentifier (Get-ADObject -Filter "SamAccountName -eq '$for'" -Properties objectSID).objectSID
-      }
+#           [String]
+#           $inheritance
+#       )
+#       Import-Module ActiveDirectory
+#       Set-Location AD:
+#       $aclValues = 'AccessSystemSecurity', 'CreateChild', 'Delete', 'DeleteChild', 'DeleteTree', 'ExtendedRight', 'GenericAll', 'GenericExecute', 'GenericRead', 'GenericWrite', 'ListChildren', 'ListObject', 'ReadControl', 'ReadProperty', 'Self', 'Synchronize', 'WriteDacl', 'WriteOwner', 'WriteProperty'
+#       $aclExtendValues = 'Ext-User-Force-Change-Password', 'Ext-Self-Self-Membership', 'Ext-Write-Self-Membership', 'Ext-ManageCA', 'DS-Replication-Get-Changes-All', 'Reanimate-Tombstones'
+#       if ($for.StartsWith("NT AUTHORITY")) {
+#         $forSID = New-Object System.Security.Principal.NTAccount "$for"
+#       } else {
+#         $forSID = New-Object System.Security.Principal.SecurityIdentifier (Get-ADObject -Filter "SamAccountName -eq '$for'" -Properties objectSID).objectSID
+#       }
 
-      try {
-        $objAcl = get-acl -Path "$to" -ErrorAction Stop
-        $objOU = $to
-        $objFound=$true
-      } catch [System.Management.Automation.ItemNotFoundException]{
-        $objFound=$false
-      }
+#       try {
+#         $objAcl = get-acl -Path "$to" -ErrorAction Stop
+#         $objOU = $to
+#         $objFound=$true
+#       } catch [System.Management.Automation.ItemNotFoundException]{
+#         $objFound=$false
+#       }
 
-      if (-not $objFound) {
-        $extra_args = @{}
-        if ($to -match "\\") {
-          $extra_args.Server = $to.Split("\")[0]
-          $to = $to.Split("\")[1]
-        }
-        $toObj = Get-ADObject -Filter "SamAccountName -eq '$to'" @extra_args
-        $objOU = ($toObj).DistinguishedName
-        $objAcl = get-acl -Path "$objOU"
-      }
+#       if (-not $objFound) {
+#         $extra_args = @{}
+#         if ($to -match "\\") {
+#           $extra_args.Server = $to.Split("\")[0]
+#           $to = $to.Split("\")[1]
+#         }
+#         $toObj = Get-ADObject -Filter "SamAccountName -eq '$to'" @extra_args
+#         $objOU = ($toObj).DistinguishedName
+#         $objAcl = get-acl -Path "$objOU"
+#       }
 
-      $type =  [System.Security.AccessControl.AccessControlType] "Allow"
-      $inheritanceType = [System.DirectoryServices.ActiveDirectorySecurityInheritance] $inheritance
+#       $type =  [System.Security.AccessControl.AccessControlType] "Allow"
+#       $inheritanceType = [System.DirectoryServices.ActiveDirectorySecurityInheritance] $inheritance
 
-      $aclExtendedValueRightGUID = @{
-        "Ext-User-Force-Change-Password" = @("ExtendedRight","00299570-246d-11d0-a768-00aa006e0529")
-        "Ext-Write-Self-Membership" = @("WriteProperty","bf9679c0-0de6-11d0-a285-00aa003049e2")
-        "Ext-Self-Self-Membership" = @("Self","bf9679c0-0de6-11d0-a285-00aa003049e2")
-        "Ext-ManageCA" = @("ExtendedRight","18e470eb-9b98-47c5-896e-146c5c77100d")
-      }
+#       $aclExtendedValueRightGUID = @{
+#         "Ext-User-Force-Change-Password" = @("ExtendedRight","00299570-246d-11d0-a768-00aa006e0529")
+#         "Ext-Write-Self-Membership" = @("WriteProperty","bf9679c0-0de6-11d0-a285-00aa003049e2")
+#         "Ext-Self-Self-Membership" = @("Self","bf9679c0-0de6-11d0-a285-00aa003049e2")
+#         "Ext-ManageCA" = @("ExtendedRight","18e470eb-9b98-47c5-896e-146c5c77100d")
+#         "DS-Replication-Get-Changes-All" = @("ExtendedRight","1131f6ad-9c07-11d1-f79f-00c04fc2dcd2")
+#         "Reanimate-Tombstones" = @("ExtendedRight","45ec5156-db7e-47bb-b53f-dbeb2d03c40f")
+#       }
 
-      $Ansible.Changed = $false
-      if ($aclValues.contains($right)) {
-        $adRight =  [System.DirectoryServices.ActiveDirectoryRights] $right
-        $ace = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $forSID,$adRight,$type,$inheritanceType
-      }
-      if ($aclExtendValues.contains($right)) {
-        $extendedRightGUID = $aclExtendedValueRightGUID[$right][1]
-        $extright = $aclExtendedValueRightGUID[$right][0]
-        $adRight =  [System.DirectoryServices.ActiveDirectoryRights] $extright
-        $ace = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $forSID,$extright,$type,$extendedRightGUID,$inheritanceType
-      }
-      if ($ace) {
-        $objAcl.AddAccessRule($ace)
-        Set-Acl -AclObject $objAcl -path "$objOU"
-        $Ansible.Changed = $true
-      }
-    parameters:
-      for: "{{item.value.for}}"
-      to: "{{item.value.to}}"
-      right: "{{item.value.right}}"
-      inheritance: "{{item.value.inheritance}}"
-  vars:
-    ansible_become: yes
-    ansible_become_method: runas
-    ansible_become_user: "{{domain_username}}"
-    ansible_become_password: "{{domain_password}}"
-  with_dict: "{{ ad_acls }}"
+#       $Ansible.Changed = $false
+#       if ($aclValues.contains($right)) {
+#         $adRight =  [System.DirectoryServices.ActiveDirectoryRights] $right
+#         $ace = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $forSID,$adRight,$type,$inheritanceType
+#       }
+#       if ($aclExtendValues.contains($right)) {
+#         $extendedRightGUID = $aclExtendedValueRightGUID[$right][1]
+#         $extright = $aclExtendedValueRightGUID[$right][0]
+#         $adRight =  [System.DirectoryServices.ActiveDirectoryRights] $extright
+#         $ace = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $forSID,$extright,$type,$extendedRightGUID,$inheritanceType
+#       }
+#       if ($ace) {
+#         $objAcl.AddAccessRule($ace)
+#         Set-Acl -AclObject $objAcl -path "$objOU"
+#         $Ansible.Changed = $true
+#       }
+#     parameters:
+#       for: "{{item.value.for}}"
+#       to: "{{item.value.to}}"
+#       right: "{{item.value.right}}"
+#       inheritance: "{{item.value.inheritance}}"
+#   vars:
+#     ansible_become: yes
+#     ansible_become_method: runas
+#     ansible_become_user: "{{domain_username}}"
+#     ansible_become_password: "{{domain_password}}"
+#   with_dict: "{{ ad_acls }}"
+
+
+# - name: ACL
+#   ansible.windows.win_powershell:
+#     script: |
+#       param(
+#           [string]$For,
+#           [string]$To,
+#           [string]$Right,
+#           [string]$Inheritance = "None"
+#       )
+
+#       function Resolve-DistinguishedName {
+#         param([string]$Name)
+
+#         # 1) Already a DN
+#         if ($Name -match "^CN=.*?,DC=.*") {
+#             return $Name
+#         }
+
+#         # 2) DNS domain name → Domain DN
+#         #    e.g. contoso.com → DC=contoso,DC=com
+#         if ($Name -match "^[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+$") {
+#             try {
+#                 $domain = Get-ADDomain -Identity $Name -ErrorAction Stop
+#                 return $domain.DistinguishedName
+#             } catch {
+#                 # Try resolving manually
+#                 $parts = $Name.Split(".")
+#                 if ($parts.Count -ge 2) {
+#                     return ($parts | ForEach-Object { "DC=$_" }) -join ","
+#                 }
+#                 throw "Could not resolve domain name '$Name' to a DN."
+#             }
+#         }
+
+#         # 3) NETBIOS domain name (CONTOSO)
+#         try {
+#             $domain = Get-ADDomain -Identity $Name -ErrorAction Stop
+#             return $domain.DistinguishedName
+#         } catch { }
+
+#         # 4) Try resolving ANY AD object (user, group, OU, etc.)
+#         $obj = Get-ADObject -Filter {
+#             (samAccountName -eq $Name) -or
+#             (name -eq $Name) -or
+#             (displayName -eq $Name) -or
+#             (mail -eq $Name)
+#         } -Properties distinguishedName -ErrorAction SilentlyContinue
+
+#         if ($obj) {
+#             return $obj.DistinguishedName
+#         }
+
+#         throw "Could not resolve '$Name' to a distinguishedName."
+#       }
+
+#       # Convert friendly name → DN
+#       $ToDN = Resolve-DistinguishedName -Name $To
+
+#       # Mapping friendly extended rights → GUIDs
+#       $ExtendedRightsMap = @{
+#         "DS-Replication-Get-Changes"                = "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2"
+#         "DS-Replication-Get-Changes-All"            = "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2"
+#         "DS-Replication-Get-Changes-In-Filtered-Set"= "89e95b76-444d-4c62-991a-0facbeda640c"
+#         "Reanimate-Tombstones"                      = "4ecc03fe-ffc0-4947-b630-eb672a8a9d1a"
+#         "User-Force-Change-Password"                = "00299570-246d-11d0-a768-00aa006e0529"
+#       }
+
+#       # Convert inheritance string → enum
+#       switch ($Inheritance) {
+#           "None"        { $inheritEnum = [System.DirectoryServices.ActiveDirectorySecurityInheritance]::None }
+#           "All"         { $inheritEnum = [System.DirectoryServices.ActiveDirectorySecurityInheritance]::All }
+#           "Descendents" { $inheritEnum = [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents }
+#           "SelfOnly"    { $inheritEnum = [System.DirectoryServices.ActiveDirectorySecurityInheritance]::SelfAndChildren }
+#           default       { throw "Invalid inheritance value: $Inheritance" }
+#       }
+
+#       # Determine if "Right" is:
+#       #   - native AD right enum (e.g. GenericWrite)
+#       #   - extended right friendly name (e.g. DS-Replication-Get-Changes)
+#       #   - direct GUID provided by user
+#       $ObjectTypeGUID = $null
+
+#       # 1) Friendly extended right
+#       if ($ExtendedRightsMap.ContainsKey($Right)) {
+#           $ObjectTypeGUID = New-Object Guid $ExtendedRightsMap[$Right]
+#           $adRights = [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight
+#       }
+#       # 2) Direct GUID input
+#       elseif ($Right -match "^[0-9a-fA-F-]{36}$") {
+#           $ObjectTypeGUID = New-Object Guid $Right
+#           $adRights = [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight
+#       }
+#       # 3) Native AD right
+#       else {
+#           try {
+#               $adRights = [System.DirectoryServices.ActiveDirectoryRights]::$Right
+#               $ObjectTypeGUID = [Guid]::Empty
+#           }
+#           catch {
+#               throw "Unknown right: $Right. Must be AD right name or extended-right GUID."
+#           }
+#       }
+
+#       # Load target AD object
+#       $entry = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$ToDN")
+#       $acl = $entry.ObjectSecurity
+
+#       # Check if ACE already exists
+#       $exists = $acl.Access | Where-Object {
+#           $_.IdentityReference -eq $identity -and
+#           $_.ActiveDirectoryRights -eq $adRights -and
+#           $_.InheritanceType -eq $inheritEnum -and
+#           $_.ObjectType -eq $ObjectTypeGUID
+#       }
+
+#       if ($exists) {
+#         Write-Host "ACE already exists. No changes."
+#         $Ansible.Changed = $false
+#         return $false
+#       }
+
+#       # Build ACE
+#       if ($adRights -eq [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight) {
+#         # Extended Right → Must supply objectType GUID and inheritance
+#         $rule = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
+#           (New-Object System.Security.Principal.NTAccount($For)),
+#           $adRights,
+#           [System.Security.AccessControl.AccessControlType]::Allow,
+#           $ObjectTypeGUID,
+#           $inheritEnum
+#         )
+#       }
+#       else {
+#         # Standard right → Uses constructor without objectType GUID
+#         $rule = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
+#           (New-Object System.Security.Principal.NTAccount($For)),
+#           $adRights,
+#           [System.Security.AccessControl.AccessControlType]::Allow,
+#           $inheritEnum
+#         )
+#       }
+
+#       # Apply ACE
+#       $acl.AddAccessRule($rule)
+#       $entry.ObjectSecurity = $acl
+#       $entry.CommitChanges()
+
+#       # Output JSON for Ansible
+#       $result = @{
+#           changed = $true
+#           granted_to = $For
+#           target = $To
+#           right = $Right
+#           inheritance = $Inheritance
+#       }
+#       $result | ConvertTo-Json
+#     parameters:
+#       for: "{{item.value.for}}"
+#       to: "{{item.value.to}}"
+#       right: "{{item.value.right}}"
+#       inheritance: "{{item.value.inheritance}}"
+#   vars:
+#     ansible_become: yes
+#     ansible_become_method: runas
+#     ansible_become_user: "{{domain_username}}"
+#     ansible_become_password: "{{domain_password}}"
+#   with_dict: "{{ ad_acls }}"
+#   register: acl
+
+- name: Set ACLs
+  belair10.ad.acl:
+    object: "{{item.value.object}}"
+    principal: "{{item.value.principal}}"
+    rights: "{{item.value.rights}}"
+    object_type: "{{item.value.object_type|default('')}}"
+    inherit: "{{item.value.inherit|default('None')}}" 
+    type: allow
+  loop: "{{ad_acls | dict2items}}"
+  register: acl
+
+- debug:
+    msg: "{{acl}}"
+
+      
