@@ -8,6 +8,8 @@ collections:
   # - name: community.windows
   - name: chocolatey.chocolatey
   - name: community.mysql
+  - name: community.docker
+  - name: belair10.ad
 # - name: goad.windows
 #   type: dir
 #   source: ./collections/goad/windows
